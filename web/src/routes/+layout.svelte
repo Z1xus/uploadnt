@@ -37,12 +37,16 @@
 <div class="flex min-h-dvh flex-col">
 	<div class="flex-1">{@render children()}</div>
 	<footer
-		class="mx-auto flex w-full max-w-[58ch] flex-wrap gap-x-4 px-6 pt-16 pb-6 font-fine text-[11.5px] text-graphite"
+		class="mx-auto flex w-full max-w-[44rem] flex-wrap gap-x-4 gap-y-1 px-6 pt-16 pb-6 font-fine text-base text-graphite"
 	>
-		<span class="mr-auto">provided to you by an individual with hatred in heart</span>
-		<a href="/rest" class="underline-offset-2 hover:underline">the rest</a>
-		<button class="cursor-pointer underline-offset-2 hover:underline" onclick={toggle}
-			>{isDark ? 'light' : 'dark'}</button
+		<a href="https://z1x.us/" class="mr-auto underline-offset-2 hover:underline"
+			>provided to you by an individual with hatred in heart</a
 		>
+		<span class="flex gap-x-4">
+			<a href="/rest" class="underline-offset-2 hover:underline">the rest</a>
+			<button class="cursor-pointer underline-offset-2 hover:underline" onclick={toggle}
+				>{isDark ? 'light' : 'dark'}</button
+			>
+		</span>
 	</footer>
 </div>

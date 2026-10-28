@@ -10,7 +10,6 @@
 	import Path from '../ui/Path.svelte';
 	import Qr from '../ui/Qr.svelte';
 	import Stamp from '../ui/Stamp.svelte';
-	import { tilted } from '../ui/tilt';
 
 	let { s }: { s: Sending } = $props();
 
@@ -25,23 +24,19 @@
 
 <main class="relative mx-auto max-w-[58ch] px-6 pt-[10vh]">
 	{#if s.phase === 'waiting'}
-		<button
-			class="relative block w-full cursor-copy text-left text-2xl break-all"
-			onclick={copy}
-			use:tilted={seed}
-		>
+		<button class="relative block w-full cursor-copy text-left text-2xl break-all" onclick={copy}>
 			{s.link}
 			{#if copied}<Mark kind="underline" seed={seed + 1} class="inset-x-0 -bottom-2 h-2 w-full" />{/if}
 		</button>
 		<div class="mt-10 flex flex-wrap items-end gap-10">
-			<div use:tilted={seed + 2}><Qr text={s.link} /></div>
-			<ul class="space-y-1 text-lg" use:tilted={seed + 3}>
+			<div><Qr text={s.link} /></div>
+			<ul class="space-y-1 text-lg">
 				{#each s.files as f}<li class="break-all normal-case">
 						{f.webkitRelativePath || f.name} <span class="text-graphite">{size(f.size)}</span>
 					</li>{/each}
 			</ul>
 		</div>
-		<p class="relative mt-14 inline-block text-3xl" use:tilted={seed + 4}>
+		<p class="relative mt-14 inline-block text-3xl">
 			keep this tab open
 			<Mark kind="underline" seed={seed + 5} delay={300} class="inset-x-0 -bottom-2 h-2 w-full" />
 		</p>
@@ -55,7 +50,7 @@
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />
 	{:else}
-		<p class="text-3xl text-marker" use:tilted={seed}>{grievances[s.grievance ?? 'broken']}</p>
+		<p class="text-3xl text-marker">{grievances[s.grievance ?? 'broken']}</p>
 		<div class="mt-10"><Stamp onclick={() => location.reload()}>start over</Stamp></div>
 	{/if}
 </main>

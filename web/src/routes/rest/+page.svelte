@@ -4,32 +4,35 @@
 </script>
 
 <main class="mx-auto max-w-[58ch] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
+	<h2 class="text-2xl">how it works</h2>
 	<p>
-		the file goes from one browser straight to the other, encrypted with a key that only lives in the link.
-		the part after the # never reaches any server.
+		the file goes straight from your browser to theirs. the key lives in the link after the #. browsers never
+		send that part to any server
 	</p>
 	<p>
-		a small server called the lobby introduces the two ends. it sees two addresses and ciphertext, then gets
-		out of the way.
+		a small server called the lobby introduces the two browsers to each other. then its out of the picture
 	</p>
 	<p>
-		when two networks refuse to meet, the bytes go through a relay called plan b. it forwards ciphertext as it
-		arrives and keeps nothing. the page says plan b when that happens.
+		sometimes two networks cant connect directly, so the bytes go through a relay called plan b. it just
+		passes the encrypted bytes along and keeps nothing. the page says plan b when that happens
 	</p>
+	<h2 class="pt-4 text-2xl">privacy</h2>
 	<p>
-		a web page cannot prove itself. a server could lie to you and nobody else. the code is public and every
-		release is signed, so a swap shows up for everyone except the person it targets.
+		the lobby and plan b see your ip while youre connected and dont write it down. the only thing kept is a
+		daily count of how many transfers went direct and how many needed plan b
 	</p>
+	{#if stats}
+		<p>
+			page visits here are counted with <a href={stats} class="underline underline-offset-4">impactite</a>, my
+			own cookieless analytics. it gets the page path, the referrer and the browser, never the link or the
+			file. no sessions, no heatmaps
+		</p>
+	{/if}
+	<h2 class="pt-4 text-2xl">run your own</h2>
 	<p>
-		privacy: the lobby and plan b see your ip address while you use them and write none of it down. the only
-		thing kept is a daily count of transfers that went direct and transfers that needed plan b.{#if stats}
-			page visits are counted with <a href={stats} class="underline underline-offset-4">impactite</a>, without
-			cookies. it gets the page, the referrer and your browser, never the link or the file. no recordings, no
-			heatmaps.{/if}
-	</p>
-	<p>
-		run your own: one binary, one port. the <a href={SOURCE} class="underline underline-offset-4">source</a> is
-		gpl-3.0.
+		the <a href={SOURCE} class="underline underline-offset-4">source</a> is gpl-3.0 and every release is built and
+		signed in public ci, so anyone can check that the live site matches the source. if you dont wanna trust me,
+		run your own, its one binary
 	</p>
 	<p><a href="/" class="underline underline-offset-4">back</a></p>
 </main>

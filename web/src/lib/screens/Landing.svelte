@@ -4,7 +4,6 @@
 	import Stamp from '../ui/Stamp.svelte';
 	import Struck from '../ui/Struck.svelte';
 	import type { Pending } from '../sending.svelte';
-	import { tilted } from '../ui/tilt';
 
 	let { seed, previous, onfiles }: { seed: number; previous?: Pending; onfiles: (files: File[]) => void } =
 		$props();
@@ -39,7 +38,7 @@
 />
 
 <main class="relative mx-auto max-w-[58ch] px-6 pt-[14vh]">
-	<h1 class="bleed text-[clamp(4rem,16vw,8.5rem)] leading-[0.9]" use:tilted={seed}>
+	<h1 class="bleed text-[clamp(4rem,16vw,8.5rem)] leading-[0.9]">
 		<Struck seed={seed + 1} delay={200}>upload</Struck><Scrawl
 			seed={seed + 2}
 			delay={520}
@@ -51,7 +50,6 @@
 		class="relative mt-16 border-2 border-dashed px-8 py-12 transition-colors {over
 			? 'border-marker'
 			: 'border-ink'}"
-		use:tilted={seed + 3}
 	>
 		<p class="mb-8 text-xl">
 			{#if over}let go.{:else if previous}pick <span class="normal-case"
@@ -70,12 +68,12 @@
 		/>
 
 		<Margin>
-			<p use:tilted={seed + 4}>both of you stay online the whole time.</p>
-			<p use:tilted={seed + 5}>it goes as fast as your connection sends.</p>
-			<p use:tilted={seed + 6}>phones sleep. keep the screen on.</p>
-			<p class="text-marker" use:tilted={seed + 7}>yes, really.</p>
+			<p>drop a file, send the link to the other person yourself</p>
+			<p>both of you keep the tab open until its done. nothing sits on a server</p>
+			<p>speed is whatever your two connections can do</p>
+			<p>on a phone, keep the screen on</p>
 			{#if planb !== undefined}
-				<p use:tilted={seed + 8}>in the last 30 days, {planb}% of transfers needed plan b.</p>
+				<p>in the last 30 days, {planb}% of transfers needed plan b</p>
 			{/if}
 		</Margin>
 	</div>

@@ -89,9 +89,3 @@ export function scrawl(seed: number) {
 	const rand = random(seed);
 	return NT.map((stroke) => smooth(jitter(stroke, rand, 3.2)));
 }
-
-export function tilt(seed: number) {
-	const rand = random(seed);
-	const deg = 0.2 + rand() * 0.4;
-	return rand() < 0.5 ? -deg : deg;
-}

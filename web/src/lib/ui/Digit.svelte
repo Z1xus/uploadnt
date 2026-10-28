@@ -6,7 +6,7 @@
 	const pct = $derived(Math.min(99, Math.floor(value * 100)));
 	const style = $derived.by(() => {
 		const rand = random(pct * 7919 + 1);
-		return `rotate: ${(rand() - 0.5) * 3}deg; translate: ${(rand() - 0.5) * 12}px ${(rand() - 0.5) * 8}px`;
+		return `translate: ${(rand() - 0.5) * 12}px ${(rand() - 0.5) * 8}px`;
 	});
 </script>
 
