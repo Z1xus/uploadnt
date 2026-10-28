@@ -9,7 +9,7 @@ command = "cd ../crates/lobby && cargo install -q worker-build@^0.8 && worker-bu
 [assets]
 directory = "../web/build"
 not_found_handling = "404-page"
-run_worker_first = ["/m/*", "/turn/*", "/stats"]
+run_worker_first = ["/m/*", "/stats"]
 
 [[durable_objects.bindings]]
 name = "LOBBY"

@@ -6,18 +6,19 @@ use crate::{MAX_MESSAGE, Stats, TURN_TTL_SECS, coturn_credentials, encode, valid
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let path = req.path();
-    if path == "/turn/credentials" {
-        return turn(&env).await;
+    if path == "/stats" && req.method() == Method::Get {
+        return tally(&env)?.fetch_with_request(req).await;
     }
-    if path == "/stats" {
-        return env.durable_object("TALLY")?.id_from_name("all")?.get_stub()?.fetch_with_request(req).await;
-    }
-    match path.strip_prefix("/m/") {
+    match path.strip_prefix("/m/").map(|rest| rest.split_once('/').map_or(rest, |(mailbox, _)| mailbox)) {
         Some(mailbox) if valid_mailbox(mailbox) => {
             env.durable_object("LOBBY")?.id_from_name(mailbox)?.get_stub()?.fetch_with_request(req).await
         }
         _ => Response::error("nothing here", 404),
     }
+}
+
+fn tally(env: &Env) -> Result<Stub> {
+    env.durable_object("TALLY")?.id_from_name("all")?.get_stub()
 }
 
 async fn turn(env: &Env) -> Result<Response> {
@@ -58,9 +59,6 @@ impl DurableObject for Tally {
         let day = Date::now().as_millis() / 86_400_000;
         let storage = self.state.storage();
         if req.method() == Method::Post {
-            if req.headers().get("Content-Length")?.and_then(|n| n.parse::<usize>().ok()).is_none_or(|n| n > 8) {
-                return Response::error("too big", 413);
-            }
             let path = req.text().await?;
             let mut stats: Stats = storage.get("days").await?.unwrap_or_default();
             stats.count(day, &path);
@@ -75,12 +73,25 @@ impl DurableObject for Tally {
 #[durable_object]
 pub struct Room {
     state: State,
+    env: Env,
 }
 
 impl Room {
     fn others(&self, ws: &WebSocket) -> Vec<WebSocket> {
         let tags = self.state.get_tags(ws);
         self.state.get_websockets().into_iter().filter(|other| self.state.get_tags(other) != tags).collect()
+    }
+
+    async fn report(&self, ws: &WebSocket, path: String) -> Result<()> {
+        let fresh = ws.deserialize_attachment::<bool>()?.is_none();
+        if !fresh || self.state.get_websockets().len() != 2 || !matches!(path.as_str(), "direct" | "planb") {
+            return Ok(());
+        }
+        ws.serialize_attachment(true)?;
+        let mut init = RequestInit::new();
+        init.with_method(Method::Post).with_body(Some(path.into()));
+        tally(&self.env)?.fetch_with_request(Request::new_with_init("https://tally/", &init)?).await?;
+        Ok(())
     }
 
     fn leave(&self, ws: &WebSocket) -> Result<()> {
@@ -93,11 +104,17 @@ impl Room {
 }
 
 impl DurableObject for Room {
-    fn new(state: State, _env: Env) -> Self {
-        Self { state }
+    fn new(state: State, env: Env) -> Self {
+        Self { state, env }
     }
 
     async fn fetch(&self, req: Request) -> Result<Response> {
+        if req.path().ends_with("/turn") {
+            if self.state.get_websockets().len() != 2 {
+                return Response::error("nobody to relay for", 403);
+            }
+            return turn(&self.env).await;
+        }
         if req.headers().get("Upgrade")?.as_deref() != Some("websocket") {
             return Response::error("websockets only", 426);
         }
@@ -122,7 +139,10 @@ impl DurableObject for Room {
     }
 
     async fn websocket_message(&self, ws: WebSocket, message: WebSocketIncomingMessage) -> Result<()> {
-        let WebSocketIncomingMessage::Binary(bytes) = message else { return Ok(()) };
+        let bytes = match message {
+            WebSocketIncomingMessage::Binary(bytes) => bytes,
+            WebSocketIncomingMessage::String(path) => return self.report(&ws, path).await,
+        };
         if bytes.len() > MAX_MESSAGE {
             return ws.close(Some(1009), Some("too big"));
         }
