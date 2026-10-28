@@ -21,9 +21,9 @@ fn tally(env: &Env) -> Result<Stub> {
     env.durable_object("TALLY")?.id_from_name("all")?.get_stub()
 }
 
-async fn turn(env: &Env) -> Result<Response> {
+async fn turn(env: &Env, mailbox: &str) -> Result<Response> {
     if let (Ok(urls), Ok(secret)) = (env.var("TURN_URLS"), env.secret("TURN_SECRET")) {
-        let body = coturn_credentials(&urls.to_string(), &secret.to_string(), Date::now().as_millis() / 1000);
+        let body = coturn_credentials(&urls.to_string(), &secret.to_string(), Date::now().as_millis() / 1000, mailbox);
         return json(Response::ok(body)?, "no-store");
     }
     let (Ok(id), Ok(token)) = (env.var("TURN_KEY_ID"), env.secret("TURN_KEY_API_TOKEN")) else {
@@ -113,7 +113,8 @@ impl DurableObject for Room {
             if self.state.get_websockets().len() != 2 {
                 return Response::error("nobody to relay for", 403);
             }
-            return turn(&self.env).await;
+            let path = req.path();
+            return turn(&self.env, path.trim_start_matches("/m/").trim_end_matches("/turn")).await;
         }
         if req.headers().get("Upgrade")?.as_deref() != Some("websocket") {
             return Response::error("websockets only", 426);

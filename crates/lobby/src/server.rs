@@ -83,7 +83,7 @@ async fn turn(Path(mailbox): Path<String>, State(app): State<App>) -> Response {
     if !paired(&app, &mailbox) {
         return (StatusCode::FORBIDDEN, "nobody to relay for").into_response();
     }
-    let body = coturn_credentials(&urls, &secret, now().as_secs());
+    let body = coturn_credentials(&urls, &secret, now().as_secs(), &mailbox);
     ([(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-store")], body).into_response()
 }
 

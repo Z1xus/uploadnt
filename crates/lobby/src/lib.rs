@@ -46,9 +46,9 @@ impl Stats {
     }
 }
 
-// coturn use-auth-secret: the username is the expiry and the password is its hmac
-pub fn coturn_credentials(urls: &str, secret: &str, now_secs: u64) -> String {
-    let username = (now_secs + TURN_TTL_SECS).to_string();
+// coturn use-auth-secret: the username is expiry:mailbox, so each transfer gets its own quota, and the password is its hmac
+pub fn coturn_credentials(urls: &str, secret: &str, now_secs: u64, mailbox: &str) -> String {
+    let username = format!("{}:{mailbox}", now_secs + TURN_TTL_SECS);
     let mut mac = Hmac::<Sha1>::new_from_slice(secret.as_bytes()).unwrap();
     mac.update(username.as_bytes());
     let credential = data_encoding::BASE64.encode(&mac.finalize().into_bytes());
