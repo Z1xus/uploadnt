@@ -14,7 +14,7 @@ import { Rate } from './rate';
 
 type Phase = 'waiting' | 'sending' | 'done' | 'failed';
 
-export type Pending = { secret: string; files: { name: string; size: number }[]; at: number };
+export type Pending = { secret: string; files: { name: string; size: number }[]; root?: string; at: number };
 
 const PENDING = 'sending.json';
 const PENDING_MAX_AGE_MS = 24 * 3600_000;
@@ -32,14 +32,17 @@ export async function pending(): Promise<Pending | undefined> {
 	}
 }
 
-async function remember(p?: Pending) {
-	try {
-		const dir = await navigator.storage.getDirectory();
-		if (!p) return await dir.removeEntry(PENDING);
-		const out = await (await dir.getFileHandle(PENDING, { create: true })).createWritable();
-		await out.write(JSON.stringify(p));
-		await out.close();
-	} catch {}
+function record(update: (current?: Pending) => Pending | undefined) {
+	return navigator.locks
+		.request(PENDING, async () => {
+			const dir = await navigator.storage.getDirectory();
+			const next = update(await pending());
+			if (!next) return await dir.removeEntry(PENDING).catch(() => {});
+			const out = await (await dir.getFileHandle(PENDING, { create: true })).createWritable();
+			await out.write(JSON.stringify(next));
+			await out.close();
+		})
+		.catch(() => {});
 }
 
 export class Sending {
@@ -49,11 +52,11 @@ export class Sending {
 	rate = $state(0);
 	path = $state<Path>('direct');
 	grievance = $state<Grievance>();
-	readonly link: string;
+	link = $state('');
 	readonly total: number;
 
 	private secret: string;
-	private lobby: Lobby;
+	private lobby?: Lobby;
 	private manifest: Promise<ManifestBuilder>;
 	private attempt?: Attempt;
 	private spare = this.prewarm();
@@ -68,16 +71,32 @@ export class Sending {
 		previous?: Pending
 	) {
 		const same = JSON.stringify(previous?.files) === JSON.stringify(describe(files));
+		// a reused link must carry the same bytes, so wait for the root before joining
+		const check = same ? previous!.root : undefined;
 		this.secret = same ? previous!.secret : newSecret();
-		remember({ secret: this.secret, files: describe(files), at: Date.now() });
 		this.link = `${location.origin}/#${this.secret}`;
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();
+		record(() => ({ secret: this.secret, files: describe(files), root: check, at: Date.now() }));
+		this.manifest.then((builder) => {
+			const root = builder.root();
+			if (check && root !== check) {
+				this.secret = newSecret();
+				this.link = `${location.origin}/#${this.secret}`;
+			}
+			record(() => ({ secret: this.secret, files: describe(files), root, at: Date.now() }));
+			if (check) this.join();
+		});
+		if (!check) this.join();
+	}
+
+	private join() {
+		if (this.phase === 'failed') return;
 		this.lobby = new Lobby(Lobby.url(parseLink(this.secret)!.mailbox), (e) => this.onLobby(e));
 	}
 
 	close() {
-		this.lobby.close();
+		this.lobby?.close();
 		this.attempt?.close();
 		this.lock?.release();
 	}
@@ -130,9 +149,13 @@ export class Sending {
 		old?.close();
 		this.session = undefined;
 		this.reads = [];
-		const peer = this.spare;
+		let peer = this.spare;
+		if (peer.stale) {
+			peer.close();
+			peer = this.prewarm();
+		}
 		this.spare = this.prewarm();
-		const attempt = new Attempt(this.secret, true, this.lobby, peer);
+		const attempt = new Attempt(this.secret, true, this.lobby!, peer);
 		this.attempt = attempt;
 		peer.onopen = async () => {
 			const builder = await this.manifest;
@@ -168,7 +191,7 @@ export class Sending {
 					this.phase = 'done';
 					this.bytes = this.total;
 					document.title = "uploadn't";
-					remember();
+					record((p) => (p?.secret === this.secret ? undefined : p));
 					this.close();
 					break;
 				case 'closed':

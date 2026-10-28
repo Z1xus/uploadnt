@@ -155,6 +155,10 @@ impl ManifestBuilder {
         Some(ts(Span { file, offset, len }))
     }
 
+    pub fn root(&self) -> String {
+        data_encoding::HEXLOWER.encode(&self.manifest.root())
+    }
+
     pub fn push(&mut self, data: &[u8]) {
         self.manifest.hashes.push(crate::hash_chunk(data));
     }

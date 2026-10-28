@@ -17,9 +17,10 @@ function unique(files: JsFile[]) {
 	return files.map((f) => {
 		const name = flat(f.name);
 		const dot = name.lastIndexOf('.') > 0 ? name.lastIndexOf('.') : name.length;
+		const key = (s: string) => s.normalize('NFC').toLowerCase();
 		let out = name;
-		for (let n = 2; used.has(out); n++) out = `${name.slice(0, dot)} (${n})${name.slice(dot)}`;
-		used.add(out);
+		for (let n = 2; used.has(key(out)); n++) out = `${name.slice(0, dot)} (${n})${name.slice(dot)}`;
+		used.add(key(out));
 		return out;
 	});
 }

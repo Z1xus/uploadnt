@@ -29,6 +29,8 @@ export class Receiving {
 	private chunks = 0;
 	private met = false;
 	private taking = false;
+	private finishing = false;
+	private committed?: Uint8Array;
 	private meter = new Rate();
 	private timer?: ReturnType<typeof setInterval>;
 	private alone_timer?: ReturnType<typeof setTimeout>;
@@ -154,7 +156,9 @@ export class Receiving {
 					this.files = e.files;
 					this.size = e.size;
 					this.chunks = e.chunks;
-					if (this.sink) this.accept();
+					if (this.committed) session.accept(this.committed, performance.now());
+					else if (this.finishing) break;
+					else if (this.sink) this.accept();
 					else this.phase = 'offered';
 					break;
 				case 'write':
@@ -173,7 +177,8 @@ export class Receiving {
 					document.title = `${Math.floor((100 * e.bytes) / Math.max(e.total, 1))}% · uploadn't`;
 					break;
 				case 'done':
-					this.finish();
+					if (this.committed) session.complete();
+					else this.finish();
 					break;
 				case 'closed':
 					this.fail('left');
@@ -184,14 +189,19 @@ export class Receiving {
 
 	private async finish() {
 		const session = this.session!;
+		this.finishing = true;
+		const have = session.have();
 		try {
 			await this.sink!.finish();
 		} catch (err) {
 			this.fail(grievanceOf(err));
 			return;
 		}
-		session.complete();
-		this.flush();
+		this.committed = have;
+		// a reconnect during the commit leaves a newer session that still needs the done frame
+		if (this.session === session) session.complete();
+		else if (this.session?.root()) this.session.accept(have, performance.now());
+		if (this.session) this.events();
 		this.phase = 'done';
 		document.title = "uploadn't";
 		// closing the connection throws away whatever is still queued, so we wait a second and pray

@@ -37,8 +37,13 @@ export class Peer {
 	private sink?: (signal: Signal) => void;
 	private dead = false;
 	private started?: Promise<void>;
+	private born = performance.now();
 
 	constructor(private offerer: boolean) {}
+
+	get stale() {
+		return performance.now() - this.born > ICE_MAX_AGE_MS;
+	}
 
 	set onsignal(sink: (signal: Signal) => void) {
 		this.sink = sink;

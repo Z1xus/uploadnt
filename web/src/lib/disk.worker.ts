@@ -10,6 +10,7 @@ const PERSIST_EVERY = 16;
 let files: FileSystemSyncAccessHandle[] = [];
 let bitmap: FileSystemSyncAccessHandle;
 let have: Uint8Array;
+let opened = '';
 let dirty = 0;
 
 function persist() {
@@ -22,7 +23,11 @@ function persist() {
 async function handle(req: Request) {
 	switch (req.op) {
 		case 'open': {
-			if (files.length) return have.slice();
+			if (files.length) {
+				if (req.root !== opened) throw new Error('root');
+				return have.slice();
+			}
+			opened = req.root;
 			const dir = await (
 				await navigator.storage.getDirectory()
 			).getDirectoryHandle(req.root, { create: true });
