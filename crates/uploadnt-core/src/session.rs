@@ -133,6 +133,7 @@ pub struct Receiver {
     inflight: HashMap<u32, Partial>,
     writing: HashSet<u32>,
     window: usize,
+    max_window: usize,
     last_piece: u64,
     accepted: bool,
     done: bool,
@@ -149,6 +150,7 @@ impl Receiver {
             inflight: HashMap::new(),
             writing: HashSet::new(),
             window: MIN_WINDOW,
+            max_window: MAX_WINDOW,
             last_piece: 0,
             accepted: false,
             done: false,
@@ -203,7 +205,7 @@ impl Receiver {
         let manifest = self.manifest.as_ref().unwrap();
         self.link.progress(manifest, &self.have);
         if self.writing.is_empty() {
-            self.window = (self.window + 1).min(MAX_WINDOW);
+            self.window = (self.window + 1).min(self.max_window);
         }
         self.fill(now);
     }
@@ -214,6 +216,11 @@ impl Receiver {
             self.window = MIN_WINDOW;
             self.fill(now);
         }
+    }
+
+    pub fn set_max_window(&mut self, chunks: usize) {
+        self.max_window = chunks.clamp(MIN_WINDOW, MAX_WINDOW);
+        self.window = self.window.min(self.max_window);
     }
 
     pub fn complete(&mut self) {

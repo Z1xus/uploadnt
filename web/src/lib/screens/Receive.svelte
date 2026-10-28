@@ -27,7 +27,7 @@
 		<div class="mt-12"><Stamp onclick={() => r.take()}>take it</Stamp></div>
 	{:else if r.phase === 'receiving'}
 		<Digit value={r.bytes / Math.max(r.size, 1)} />
-		<p class="mt-6 text-xl">{r.rate ? `${size(r.rate)}/s · ` : ''}<Path relayed={r.relayed} /></p>
+		<p class="mt-6 text-xl">{r.rate ? `${size(r.rate)}/s · ` : ''}<Path path={r.path} /></p>
 		<p class="mt-3 text-graphite">{r.where}</p>
 	{:else if r.phase === 'done'}
 		<Done names={r.files.map((f) => f.name)} />

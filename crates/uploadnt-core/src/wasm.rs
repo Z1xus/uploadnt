@@ -263,6 +263,11 @@ impl ReceiverSession {
         self.0.written(chunk, now as u64)
     }
 
+    #[wasm_bindgen(js_name = setMaxWindow)]
+    pub fn set_max_window(&mut self, chunks: u32) {
+        self.0.set_max_window(chunks as usize)
+    }
+
     pub fn complete(&mut self) {
         self.0.complete()
     }

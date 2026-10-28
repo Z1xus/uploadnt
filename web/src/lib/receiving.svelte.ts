@@ -3,7 +3,7 @@ import { parseLink, type JsFile, type LobbyEvent, type ParsedLink, type Receiver
 import { openSink, sweep, type Sink } from './disk';
 import { grievanceOf, type Grievance } from './grievance';
 import { Lobby } from './lobby';
-import { Peer } from './peer';
+import { Peer, type Path } from './peer';
 import { Rate } from './rate';
 
 type Phase = 'connecting' | 'offered' | 'receiving' | 'done' | 'failed';
@@ -16,7 +16,7 @@ export class Receiving {
 	size = $state(0);
 	bytes = $state(0);
 	rate = $state(0);
-	relayed = $state(false);
+	path = $state<Path>('direct');
 	alone = $state(false);
 	where = $state('');
 	grievance = $state<Grievance>();
@@ -124,7 +124,10 @@ export class Receiving {
 		this.attempt = attempt;
 		peer.onopen = async () => {
 			this.session = attempt.keys!.receiver();
-			this.relayed = await peer.relayed();
+			// phones with 2 GB or less cannot hold 32 chunks in flight
+			if ('deviceMemory' in navigator && (navigator.deviceMemory as number) <= 2)
+				this.session.setMaxWindow(8);
+			this.path = await peer.path();
 			this.flush();
 		};
 		peer.onmessage = (msg) => {

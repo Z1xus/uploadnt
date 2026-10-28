@@ -2,6 +2,8 @@ const CHANNELS = 4;
 const HIGH = 4 << 20;
 const LOW = 1 << 20;
 
+export type Path = 'direct' | 'relayed' | 'tcp';
+
 export type Signal = { sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
 
 // the worker mints turn credentials for 12 hours; fetch fresh ones well before that
@@ -111,16 +113,17 @@ export class Peer {
 		}
 	}
 
-	async relayed() {
+	async path(): Promise<Path> {
 		const stats = await this.pc!.getStats();
 		for (const r of stats.values()) {
 			if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
 				const local = stats.get(r.localCandidateId);
 				const remote = stats.get(r.remoteCandidateId);
-				return local?.candidateType === 'relay' || remote?.candidateType === 'relay';
+				if (local?.relayProtocol === 'tcp' || local?.relayProtocol === 'tls') return 'tcp';
+				if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') return 'relayed';
 			}
 		}
-		return false;
+		return 'direct';
 	}
 
 	private wake() {

@@ -9,7 +9,7 @@ import {
 } from './core';
 import { grievanceOf, type Grievance } from './grievance';
 import { Lobby } from './lobby';
-import { Peer } from './peer';
+import { Peer, type Path } from './peer';
 import { Rate } from './rate';
 
 type Phase = 'waiting' | 'sending' | 'done' | 'failed';
@@ -47,7 +47,7 @@ export class Sending {
 	hashed = $state(0);
 	bytes = $state(0);
 	rate = $state(0);
-	relayed = $state(false);
+	path = $state<Path>('direct');
 	grievance = $state<Grievance>();
 	readonly link: string;
 	readonly total: number;
@@ -138,7 +138,7 @@ export class Sending {
 			const builder = await this.manifest;
 			if (this.attempt !== attempt) return;
 			this.session = attempt.keys!.sender(builder);
-			this.relayed = await peer.relayed();
+			this.path = await peer.path();
 			this.flush();
 		};
 		peer.onmessage = (msg) => {
