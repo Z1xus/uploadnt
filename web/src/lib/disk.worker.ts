@@ -37,7 +37,11 @@ async function handle(req: Request) {
 			return have.slice();
 		}
 		case 'write':
-			files[req.file].write(req.data, { at: req.offset });
+			for (let done = 0; done < req.data.length;) {
+				const n = files[req.file].write(req.data.subarray(done), { at: req.offset + done });
+				if (!n) throw new Error('room');
+				done += n;
+			}
 			have[req.chunk >> 3] |= 1 << (req.chunk & 7);
 			if (++dirty >= PERSIST_EVERY) persist();
 			return;

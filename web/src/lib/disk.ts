@@ -12,6 +12,18 @@ type Target = FileSystemFileHandle | FileSystemDirectoryHandle | undefined;
 
 const flat = (name: string) => name.replaceAll('/', '_');
 
+function unique(files: JsFile[]) {
+	const used = new Set<string>();
+	return files.map((f) => {
+		const name = flat(f.name);
+		const dot = name.lastIndexOf('.') > 0 ? name.lastIndexOf('.') : name.length;
+		let out = name;
+		for (let n = 2; used.has(out); n++) out = `${name.slice(0, dot)} (${n})${name.slice(dot)}`;
+		used.add(out);
+		return out;
+	});
+}
+
 async function pick(files: JsFile[]): Promise<Target> {
 	if (!('showSaveFilePicker' in window)) return;
 	try {
@@ -23,7 +35,7 @@ async function pick(files: JsFile[]): Promise<Target> {
 }
 
 async function handleFor(target: Target, name: string) {
-	return target?.kind === 'directory' ? target.getFileHandle(flat(name), { create: true }) : target!;
+	return target?.kind === 'directory' ? target.getFileHandle(name, { create: true }) : target!;
 }
 
 async function staging() {
@@ -48,7 +60,7 @@ class Staged implements Sink {
 	private calls = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 	private next = 0;
 	private root = '';
-	private files: JsFile[] = [];
+	private names: string[] = [];
 
 	constructor(
 		private target: Target,
@@ -72,7 +84,7 @@ class Staged implements Sink {
 
 	open(root: string, files: JsFile[], chunks: number) {
 		this.root = root;
-		this.files = files;
+		this.names = unique(files);
 		return this.call<Uint8Array>({ op: 'open', root, sizes: files.map((f) => f.size), chunks });
 	}
 
@@ -85,15 +97,15 @@ class Staged implements Sink {
 		this.worker.terminate();
 		const root = await staging();
 		const dir = await root.getDirectoryHandle(this.root);
-		for (const [i, entry] of this.files.entries()) {
+		for (const [i, name] of this.names.entries()) {
 			const file = await (await dir.getFileHandle(`${i}`)).getFile();
 			if (this.target) {
-				const out = await (await handleFor(this.target, entry.name)).createWritable();
+				const out = await (await handleFor(this.target, name)).createWritable();
 				await file.stream().pipeTo(out);
 			} else {
 				const a = document.createElement('a');
 				a.href = URL.createObjectURL(file);
-				a.download = flat(entry.name);
+				a.download = name;
 				a.click();
 			}
 		}
@@ -116,7 +128,8 @@ class Direct implements Sink {
 
 	async open(_root: string, files: JsFile[]) {
 		if (this.out.length) return undefined;
-		for (const f of files) this.out.push(await (await handleFor(this.target, f.name)).createWritable());
+		for (const name of unique(files))
+			this.out.push(await (await handleFor(this.target, name)).createWritable());
 		return undefined;
 	}
 
@@ -133,12 +146,20 @@ class Direct implements Sink {
 	}
 }
 
-export async function openSink(files: JsFile[], size: number): Promise<Sink> {
+export async function openSink(root: string, files: JsFile[], size: number): Promise<Sink> {
 	const target = await pick(files);
 	const where = target ? `into ${target.name}` : 'into your downloads, at the end';
 	const { quota = 0, usage = 0 } = await navigator.storage.estimate().catch((): StorageEstimate => ({}));
 	const opfs = 'getDirectory' in navigator.storage;
-	if (opfs && quota - usage > size * 1.05) return new Staged(target, where);
+	const resuming =
+		opfs &&
+		(await staging()
+			.then((d) => d.getDirectoryHandle(root))
+			.then(
+				() => true,
+				() => false
+			));
+	if (resuming || (opfs && quota - usage > size * 1.05)) return new Staged(target, where);
 	if (target) return new Direct(target, where);
 	throw new Error('room');
 }

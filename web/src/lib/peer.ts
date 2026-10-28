@@ -4,13 +4,21 @@ const LOW = 1 << 20;
 
 export type Signal = { sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
 
+// the worker mints turn credentials for 12 hours; fetch fresh ones well before that
+const ICE_MAX_AGE_MS = 3600_000;
+
 let servers: Promise<RTCIceServer[]> | undefined;
+let fetched = 0;
 
 function iceServers() {
-	return (servers ??= fetch('/turn/credentials')
-		.then((r) => (r.ok ? r.json() : Promise.reject()))
-		.then((r: { iceServers: RTCIceServer[] }) => r.iceServers)
-		.catch(() => [{ urls: 'stun:stun.cloudflare.com:3478' }]));
+	if (!servers || performance.now() - fetched > ICE_MAX_AGE_MS) {
+		fetched = performance.now();
+		servers = fetch('/turn/credentials')
+			.then((r) => (r.ok ? r.json() : Promise.reject()))
+			.then((r: { iceServers: RTCIceServer[] }) => r.iceServers)
+			.catch(() => [{ urls: 'stun:stun.cloudflare.com:3478' }]);
+	}
+	return servers;
 }
 
 export class Peer {

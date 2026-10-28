@@ -28,6 +28,7 @@ export class Receiving {
 	private sink?: Sink;
 	private chunks = 0;
 	private met = false;
+	private taking = false;
 	private meter = new Rate();
 	private timer?: ReturnType<typeof setInterval>;
 	private alone_timer?: ReturnType<typeof setTimeout>;
@@ -48,11 +49,16 @@ export class Receiving {
 	}
 
 	async take() {
+		const root = this.session?.root();
+		if (this.taking || !root) return;
+		this.taking = true;
 		try {
-			this.sink = await openSink(this.files, this.size);
+			this.sink = await openSink(root, this.files, this.size);
 		} catch (e) {
 			if ((e as Error).name !== 'AbortError') this.fail(grievanceOf(e));
 			return;
+		} finally {
+			this.taking = false;
 		}
 		this.where = this.sink.where;
 		this.phase = 'receiving';
@@ -90,9 +96,13 @@ export class Receiving {
 				case 'pake':
 					this.attempt?.onPake(e.data);
 					break;
-				case 'sealed':
-					this.attempt?.onSealed(e.data).catch((err) => this.fail(grievanceOf(err)));
+				case 'sealed': {
+					const attempt = this.attempt;
+					attempt?.onSealed(e.data).catch((err) => {
+						if (this.attempt === attempt) this.fail(grievanceOf(err));
+					});
 					break;
+				}
 				case 'full':
 					if (!this.met) this.fail('full');
 			}
@@ -105,7 +115,9 @@ export class Receiving {
 		this.met = true;
 		this.alone = false;
 		clearTimeout(this.alone_timer);
-		this.attempt?.close();
+		const old = this.attempt;
+		this.attempt = undefined;
+		old?.close();
 		this.session = undefined;
 		const peer = new Peer(false);
 		const attempt = new Attempt(this.link!.secret, false, this.lobby!, peer);
@@ -168,14 +180,17 @@ export class Receiving {
 	}
 
 	private async finish() {
-		this.flush();
+		const session = this.session!;
 		try {
 			await this.sink!.finish();
-			this.phase = 'done';
-			document.title = "uploadn't";
 		} catch (err) {
 			this.fail(grievanceOf(err));
+			return;
 		}
+		session.complete();
+		this.flush();
+		this.phase = 'done';
+		document.title = "uploadn't";
 		// closing the connection throws away whatever is still queued, so we wait a second and pray
 		setTimeout(() => this.close(), 1000);
 	}

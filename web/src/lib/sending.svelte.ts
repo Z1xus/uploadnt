@@ -78,8 +78,12 @@ export class Sending {
 				case 'pake':
 					this.attempt?.onPake(e.data);
 					break;
-				case 'sealed':
-					this.attempt?.onSealed(e.data).catch((err) => this.fail(err));
+				case 'sealed': {
+					const attempt = this.attempt;
+					attempt?.onSealed(e.data).catch((err) => {
+						if (this.attempt === attempt) this.fail(err);
+					});
+				}
 			}
 		} catch (err) {
 			this.fail(err);
@@ -87,7 +91,9 @@ export class Sending {
 	}
 
 	private connect() {
-		this.attempt?.close();
+		const old = this.attempt;
+		this.attempt = undefined;
+		old?.close();
 		this.session = undefined;
 		this.reads = [];
 		const peer = this.spare;
