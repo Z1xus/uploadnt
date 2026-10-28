@@ -7,7 +7,7 @@ edition.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [features]
-wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:tsify", "getrandom/js"]
+wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:tsify", "getrandom/js", "blake3/wasm32_simd"]
 
 [dependencies]
 serde.workspace = true
