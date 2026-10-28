@@ -5,6 +5,7 @@ export interface Sink {
 	open(root: string, files: JsFile[], chunks: number): Promise<Uint8Array | undefined>;
 	write(file: number, offset: number, chunk: number, data: Uint8Array): Promise<void>;
 	finish(): Promise<void>;
+	abort(): void;
 }
 
 type Target = FileSystemFileHandle | FileSystemDirectoryHandle | undefined;
@@ -99,6 +100,10 @@ class Staged implements Sink {
 		if (this.target) await root.removeEntry(this.root, { recursive: true });
 		else await dir.getFileHandle('delivered', { create: true });
 	}
+
+	abort() {
+		this.worker.terminate();
+	}
 }
 
 class Direct implements Sink {
@@ -110,6 +115,7 @@ class Direct implements Sink {
 	) {}
 
 	async open(_root: string, files: JsFile[]) {
+		if (this.out.length) return undefined;
 		for (const f of files) this.out.push(await (await handleFor(this.target, f.name)).createWritable());
 		return undefined;
 	}
@@ -120,6 +126,10 @@ class Direct implements Sink {
 
 	async finish() {
 		await Promise.all(this.out.map((w) => w.close()));
+	}
+
+	abort() {
+		this.out.forEach((w) => w.abort().catch(() => {}));
 	}
 }
 

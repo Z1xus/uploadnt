@@ -3,6 +3,7 @@ import { decodeLobby, type LobbyEvent } from './core';
 export class Lobby {
 	private ws?: WebSocket;
 	private closed = false;
+	private retry?: ReturnType<typeof setTimeout>;
 
 	constructor(
 		private url: string,
@@ -26,6 +27,7 @@ export class Lobby {
 
 	close() {
 		this.closed = true;
+		clearTimeout(this.retry);
 		this.ws?.close();
 	}
 
@@ -34,7 +36,7 @@ export class Lobby {
 		ws.binaryType = 'arraybuffer';
 		ws.onmessage = (e) => this.onEvent(decodeLobby(new Uint8Array(e.data)));
 		ws.onclose = () => {
-			if (!this.closed) setTimeout(() => this.connect(), 1000);
+			if (!this.closed) this.retry = setTimeout(() => this.connect(), 1000);
 		};
 		this.ws = ws;
 	}

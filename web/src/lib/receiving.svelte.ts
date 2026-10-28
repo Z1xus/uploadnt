@@ -56,7 +56,7 @@ export class Receiving {
 		}
 		this.where = this.sink.where;
 		this.phase = 'receiving';
-		await this.accept();
+		this.accept();
 	}
 
 	close() {
@@ -64,14 +64,21 @@ export class Receiving {
 		clearTimeout(this.alone_timer);
 		this.lobby?.close();
 		this.attempt?.close();
+		if (this.phase !== 'done') this.sink?.abort();
 	}
 
 	private async accept() {
-		const session = this.session!;
-		const have = await this.sink!.open(session.root()!, this.files, this.chunks);
-		if (session !== this.session) return;
-		session.accept(have, performance.now());
-		this.events();
+		const session = this.session;
+		const root = session?.root();
+		if (!session || !root) return;
+		try {
+			const have = await this.sink!.open(root, this.files, this.chunks);
+			if (session !== this.session) return;
+			session.accept(have, performance.now());
+			this.events();
+		} catch (err) {
+			this.fail(grievanceOf(err));
+		}
 	}
 
 	private onLobby(e: LobbyEvent) {
