@@ -6,11 +6,52 @@
 	const SOURCE = 'https://github.com/Z1xus/uploadnt';
 	const stats = import.meta.env.PUBLIC_IMPACTITE;
 	const link = 'underline underline-offset-4';
-	const term = 'text-ink';
+
+	const refs: Record<string, string> = {
+		sri: 'https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity',
+		'import map': 'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap',
+		csp: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP',
+		'/.well-known/bundle.txt': '/.well-known/bundle.txt',
+		'github actions': 'https://github.com/actions/attest-build-provenance',
+		'sans-io': 'https://sans-io.readthedocs.io/',
+		'rust crate': `${SOURCE}/tree/main/crates/uploadnt-core`,
+		wasm: 'https://webassembly.org/',
+		simd: 'https://github.com/WebAssembly/simd',
+		base32: 'https://datatracker.ietf.org/doc/html/rfc4648#section-6',
+		'hkdf-sha256': 'https://datatracker.ietf.org/doc/html/rfc5869',
+		websocket: 'https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API',
+		spake2: 'https://datatracker.ietf.org/doc/html/rfc9382',
+		ed25519: 'https://datatracker.ietf.org/doc/html/rfc8032',
+		webrtc: 'https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API',
+		ice: 'https://datatracker.ietf.org/doc/html/rfc8445',
+		'data channels': 'https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel',
+		stun: 'https://datatracker.ietf.org/doc/html/rfc8489',
+		turn: 'https://datatracker.ietf.org/doc/html/rfc8656',
+		blake3: 'https://github.com/BLAKE3-team/BLAKE3',
+		postcard: 'https://github.com/jamesmunns/postcard',
+		'chacha20-poly1305': 'https://datatracker.ietf.org/doc/html/rfc8439',
+		opfs: 'https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system'
+	};
+	const terms = new RegExp(
+		`(?<![\\w-])(${Object.keys(refs)
+			.sort((a, b) => b.length - a.length)
+			.map((t) => t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'))
+			.join('|')})(?![\\w-])`
+	);
+
+	// splits text so the first mention of each term in a paragraph becomes a link
+	function linked(text: string) {
+		const seen = new Set<string>();
+		return text.split(terms).map((part, i) => {
+			const first = i % 2 === 1 && !seen.has(part);
+			seen.add(part);
+			return { part, href: first ? refs[part] : undefined };
+		});
+	}
 
 	const nerd: { title: string; text: string; lanes: string[]; steps: Step[] }[] = [
 		{
-			title: 'the page',
+			title: 'page load',
 			text: 'every script on the page is pinned by an sri hash in an import map, and inline scripts by csp hashes. each deploy lists its files in /.well-known/bundle.txt. github actions attests that list, and anyone can check the live site against it. the protocol is a sans-io rust crate compiled to wasm with simd.',
 			lanes: ['github', 'site', 'browser'],
 			steps: [
@@ -20,7 +61,7 @@
 			]
 		},
 		{
-			title: 'the link',
+			title: 'link',
 			text: "the sender's browser makes a secret of 128 random bits and puts it in the link after the #, written as base32. you send the link yourself, however you like.",
 			lanes: ['sender', 'receiver'],
 			steps: [
@@ -29,7 +70,7 @@
 			]
 		},
 		{
-			title: 'the lobby',
+			title: 'lobby',
 			text: 'both browsers open a websocket to the lobby and send a mailbox id derived from the secret with hkdf-sha256. the secret itself never leaves the browser. the lobby holds each mailbox in memory, with room for two sockets, and stores nothing. when both browsers are in, it tells them.',
 			lanes: ['sender', 'lobby', 'receiver'],
 			steps: [
@@ -40,7 +81,7 @@
 			]
 		},
 		{
-			title: 'the handshake',
+			title: 'handshake',
 			text: "through the lobby, the browsers run spake2 over ed25519 with the secret as the password. these messages don't reveal the secret to the lobby. hkdf-sha256 then derives one key for each direction and one for signalling. with a wrong link, the first frame fails to decrypt.",
 			lanes: ['sender', 'lobby', 'receiver'],
 			steps: [
@@ -60,7 +101,7 @@
 			]
 		},
 		{
-			title: 'the connection',
+			title: 'connection',
 			text: 'the browsers open 4 negotiated webrtc data channels and stripe the data across them, with backpressure at 4 mib. ice first tries direct paths with stun only. if nothing connects within 5 seconds, the receiver is asked, and turn is added only if they agree. turn relays the same encrypted frames.',
 			lanes: ['sender', 'plan b', 'receiver'],
 			steps: [
@@ -70,7 +111,7 @@
 			]
 		},
 		{
-			title: 'the manifest',
+			title: 'manifest',
 			text: 'the sender splits each file into 1 mib chunks and hashes each chunk with blake3. the first frames carry the file names, sizes and chunk hashes, and the receiver checks each chunk against them as it arrives.',
 			lanes: ['sender', 'receiver'],
 			steps: [
@@ -79,7 +120,7 @@
 			]
 		},
 		{
-			title: 'the transfer',
+			title: 'transfer',
 			text: "the receiver asks for chunks, with a window that grows from 4 to 32 chunks, and the sender sends each chunk as 64 kib pieces. every frame is encoded with postcard and sealed with chacha20-poly1305. it carries its 64-bit counter as the nonce, because frames on different channels arrive out of order. if a chunk's hash is wrong, the receiver asks for it again.",
 			lanes: ['sender', 'receiver'],
 			steps: [
@@ -159,8 +200,17 @@
 		>
 		<ol class="mt-6 space-y-8 text-base text-graphite">
 			{#each nerd as n, i}
-				<li>
-					<p><span class={term}>{i + 1}. {n.title}.</span> {n.text}</p>
+				<li id={n.title.replaceAll(' ', '-')} class="scroll-mt-8">
+					<h3>
+						<a href="#{n.title.replaceAll(' ', '-')}" class="flex items-baseline gap-3 text-xl text-ink"
+							><span class="font-fine text-marker">{String(i + 1).padStart(2, '0')}</span>{n.title}</a
+						>
+					</h3>
+					<p class="mt-2">
+						{#each linked(n.text) as t}{#if t.href}<a href={t.href} class="{link} decoration-graphite/50"
+									>{t.part}</a
+								>{:else}{t.part}{/if}{/each}
+					</p>
 					<Sequence lanes={n.lanes} steps={n.steps} seed={i * 97 + 5} />
 				</li>
 			{/each}
