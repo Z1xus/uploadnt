@@ -1,5 +1,7 @@
 import { jitter, random, smooth, type Point } from './marker';
 
+export type { Point };
+
 export type Tone = 'ink' | 'red' | 'faint';
 export type Stroke = { d: string; tone: Tone };
 export type Step = { from: number; to: number; label: string; tone?: Tone };

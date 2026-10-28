@@ -23,10 +23,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 async fn turn(env: &Env) -> Result<Response> {
     if let (Ok(urls), Ok(secret)) = (env.var("TURN_URLS"), env.secret("TURN_SECRET")) {
         let body = coturn_credentials(&urls.to_string(), &secret.to_string(), Date::now().as_millis() / 1000);
-        let mut out = Response::ok(body)?;
-        out.headers_mut().set("Content-Type", "application/json")?;
-        out.headers_mut().set("Cache-Control", "no-store")?;
-        return Ok(out);
+        return json(Response::ok(body)?, "no-store");
     }
     let (Ok(id), Ok(token)) = (env.var("TURN_KEY_ID"), env.secret("TURN_KEY_API_TOKEN")) else {
         return Response::error("no plan b here", 404);
@@ -38,10 +35,13 @@ async fn turn(env: &Env) -> Result<Response> {
     let mut init = RequestInit::new();
     init.with_method(Method::Post).with_headers(headers).with_body(Some(format!("{{\"ttl\":{TURN_TTL_SECS}}}").into()));
     let mut res = Fetch::Request(Request::new_with_init(&url, &init)?).send().await?;
-    let mut out = Response::from_bytes(res.bytes().await?)?.with_status(res.status_code());
-    out.headers_mut().set("Content-Type", "application/json")?;
-    out.headers_mut().set("Cache-Control", "no-store")?;
-    Ok(out)
+    json(Response::from_bytes(res.bytes().await?)?.with_status(res.status_code()), "no-store")
+}
+
+fn json(mut res: Response, cache: &str) -> Result<Response> {
+    res.headers_mut().set("Content-Type", "application/json")?;
+    res.headers_mut().set("Cache-Control", cache)?;
+    Ok(res)
 }
 
 #[durable_object]
@@ -68,10 +68,7 @@ impl DurableObject for Tally {
             return Response::empty();
         }
         let stats: Stats = storage.get("days").await?.unwrap_or_default();
-        let mut res = Response::ok(stats.json(day))?;
-        res.headers_mut().set("Content-Type", "application/json")?;
-        res.headers_mut().set("Cache-Control", "max-age=300")?;
-        Ok(res)
+        json(Response::ok(stats.json(day))?, "max-age=300")
     }
 }
 

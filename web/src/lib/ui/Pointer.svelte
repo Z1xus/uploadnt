@@ -1,36 +1,29 @@
 <script lang="ts">
-	import { pen } from '#lib/doodle.ts';
+	import { pen, type Point } from '#lib/doodle.ts';
+	import Strokes from './Strokes.svelte';
 
 	let { seed, up = false, class: cls = '' }: { seed: number; up?: boolean; class?: string } = $props();
 
-	const strokes = $derived.by(() => {
-		const p = pen(seed);
-		if (up)
-			p.arrow(
-				[
+	const points: Point[] = $derived(
+		up
+			? [
 					[44, 46],
 					[22, 34],
 					[12, 6]
-				],
-				'red',
-				2
-			);
-		else
-			p.arrow(
-				[
+				]
+			: [
 					[56, 30],
 					[30, 10],
 					[4, 18]
-				],
-				'red',
-				2
-			);
+				]
+	);
+	const strokes = $derived.by(() => {
+		const p = pen(seed);
+		p.arrow(points, 'red', 2);
 		return p.strokes;
 	});
 </script>
 
 <svg class="scrawl overflow-visible {cls}" viewBox={up ? '0 0 50 50' : '0 0 60 36'} aria-hidden="true">
-	{#each strokes as s, i}
-		<path d={s.d} pathLength="1" stroke-width="2.5" style:--delay="{600 + i * 120}ms" />
-	{/each}
+	<Strokes {strokes} width={2.5} step={120} delay={600} />
 </svg>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { seedOf } from '#lib/marker.ts';
 	import type { Sending } from '../sending.svelte';
-	import { size } from '../rate';
+	import { percent, size } from '../rate';
 	import { grievances } from '../grievance';
 	import Digit from '../ui/Digit.svelte';
 	import Done from '../ui/Done.svelte';
@@ -14,7 +14,7 @@
 
 	let { s, onback, onmore }: { s: Sending; onback: () => void; onmore: () => void } = $props();
 
-	const back = 'mt-10 block cursor-pointer text-graphite underline-offset-4 hover:underline';
+	const quiet = 'cursor-pointer text-graphite underline-offset-4 hover:underline';
 
 	const seed = $derived(seedOf(s.link));
 	let copied = $state(false);
@@ -56,9 +56,9 @@
 			keep this tab open
 			<Mark kind="underline" seed={seed + 5} delay={300} class="inset-x-0 -bottom-2 h-2 w-full" />
 		</p>
-		<button class={back} onclick={onback}>cancel</button>
+		<button class="mt-10 block {quiet}" onclick={onback}>cancel</button>
 		{#if s.hashed < s.total}
-			<Margin><p>preparing… {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
+			<Margin><p>preparing… {percent(s.hashed, s.total)}%</p></Margin>
 		{/if}
 	{:else if s.phase === 'sending'}
 		<Digit value={s.bytes / Math.max(s.total, 1)} />
@@ -66,15 +66,13 @@
 			<span>not uploading</span>{#if s.rate}<span>{size(s.rate)}/s</span>{/if}
 		</p>
 		<p class="mt-3 text-xl"><Path path={s.path} /></p>
-		<button class={back} onclick={onback}>cancel</button>
+		<button class="mt-10 block {quiet}" onclick={onback}>cancel</button>
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />
 		<p class="mt-6 text-xl">sent.</p>
 		<div class="mt-10 flex flex-wrap items-center gap-8">
 			<Stamp onclick={onmore}>send them more</Stamp>
-			<button class="cursor-pointer text-graphite underline-offset-4 hover:underline" onclick={onback}
-				>i'm done</button
-			>
+			<button class={quiet} onclick={onback}>i'm done</button>
 		</div>
 	{:else}
 		<p class="text-3xl text-marker">{grievances[s.grievance ?? 'broken']}</p>

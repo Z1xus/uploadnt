@@ -10,6 +10,8 @@ export class Rate {
 	}
 }
 
+export const percent = (bytes: number, total: number) => Math.floor((100 * bytes) / Math.max(total, 1));
+
 export function size(bytes: number) {
 	const units = ['b', 'kb', 'mb', 'gb', 'tb'];
 	let i = 0;

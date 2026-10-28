@@ -7,7 +7,6 @@ export type Path = 'direct' | 'relayed' | 'tcp';
 export type Signal =
 	{ sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { relay: boolean };
 
-// the worker mints turn credentials for 12 hours; fetch fresh ones well before that
 const ICE_MAX_AGE_MS = 3600_000;
 
 const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
@@ -47,7 +46,6 @@ export class Peer {
 		private relayed = false
 	) {}
 
-	// messages can arrive before the other channels open and before the session exists
 	set onmessage(reader: (msg: Uint8Array) => void) {
 		this.reader = reader;
 		this.inbox.splice(0).forEach(reader);
@@ -120,7 +118,6 @@ export class Peer {
 				this.emit({ sdp: pc.localDescription!.toJSON() });
 			}
 		} else if (pc.remoteDescription) {
-			// candidates from before an ice restart no longer match and can be dropped
 			await pc.addIceCandidate(msg.candidate).catch(() => {});
 		} else {
 			this.pending.push(msg.candidate);

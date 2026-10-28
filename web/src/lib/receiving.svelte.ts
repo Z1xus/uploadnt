@@ -4,7 +4,7 @@ import { openSink, sweep, type Sink } from './disk';
 import { grievanceOf, type Grievance } from './grievance';
 import { Lobby } from './lobby';
 import { Peer, relayServers, type Path } from './peer';
-import { Rate } from './rate';
+import { Rate, percent } from './rate';
 
 type Phase = 'connecting' | 'ask' | 'offered' | 'receiving' | 'done' | 'failed';
 
@@ -204,7 +204,7 @@ export class Receiving {
 				case 'progress':
 					this.bytes = e.bytes;
 					this.rate = this.meter.push(e.bytes);
-					document.title = `${Math.floor((100 * e.bytes) / Math.max(e.total, 1))}% uploadn't`;
+					document.title = `${percent(e.bytes, e.total)}% uploadn't`;
 					break;
 				case 'done':
 					if (this.committed) session.complete();
@@ -238,7 +238,6 @@ export class Receiving {
 		setTimeout(() => this.attempt?.close(), 1000);
 	}
 
-	// the same sender can send more files on this link after a transfer finishes
 	private reset() {
 		this.files = [];
 		this.size = this.bytes = this.rate = this.chunks = 0;

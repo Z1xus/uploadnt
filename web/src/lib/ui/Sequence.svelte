@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { SEQ_ROW, sequence, type Step } from '#lib/doodle.ts';
+	import Strokes from './Strokes.svelte';
 
 	let { lanes, steps, seed }: { lanes: string[]; steps: Step[]; seed: number } = $props();
 
 	const seq = $derived(sequence(lanes.length, steps, seed));
-	const tones = { ink: 'var(--ink)', red: '', faint: 'var(--graphite)' };
 </script>
 
 <svg
@@ -13,9 +13,7 @@
 	role="img"
 	aria-label={steps.map((s) => `${lanes[s.from]} to ${lanes[s.to]}: ${s.label}`).join('. ')}
 >
-	{#each seq.strokes as s, i}
-		<path d={s.d} pathLength="1" stroke-width="2" style:stroke={tones[s.tone]} style:--delay="{i * 30}ms" />
-	{/each}
+	<Strokes strokes={seq.strokes} width={2} step={30} />
 	<g class="halo fill-ink font-fine text-[13px]">
 		{#each lanes as lane, i}
 			<text x={seq.x(i)} y="16" text-anchor="middle" class="text-[13px]">{lane}</text>

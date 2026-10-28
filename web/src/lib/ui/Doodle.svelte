@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { doodle } from '#lib/doodle.ts';
+	import Strokes from './Strokes.svelte';
 
 	let { kind, seed, label }: { kind: 'corp' | 'direct' | 'planb'; seed: number; label: string } = $props();
 
@@ -12,15 +13,7 @@
 	role="img"
 	aria-label={label}
 >
-	{#each strokes as s, i}
-		<path
-			d={s.d}
-			pathLength="1"
-			stroke-width="2.5"
-			style:stroke={s.tone === 'red' ? '' : 'var(--ink)'}
-			style:--delay="{i * 45}ms"
-		/>
-	{/each}
+	<Strokes {strokes} width={2.5} step={45} />
 	<g class="halo fill-ink font-fine text-[15px]">
 		<text x="40" y="170" text-anchor="middle">you</text>
 		<text x="280" y="170" text-anchor="middle">friend</text>

@@ -224,6 +224,10 @@ fn drain(mut f: impl FnMut() -> Option<Vec<u8>>) -> Vec<Uint8Array> {
     std::iter::from_fn(|| f().map(|b| Uint8Array::from(&b[..]))).collect()
 }
 
+fn events(f: impl FnMut() -> Option<Event>) -> Vec<Ts<CoreEvent>> {
+    std::iter::from_fn(f).map(|e| ts(CoreEvent::from(e))).collect()
+}
+
 #[wasm_bindgen]
 pub struct SenderSession(crate::Sender);
 
@@ -246,7 +250,7 @@ impl SenderSession {
     }
 
     pub fn events(&mut self) -> Vec<Ts<CoreEvent>> {
-        std::iter::from_fn(|| self.0.poll_event()).map(|e| ts(CoreEvent::from(e))).collect()
+        events(|| self.0.poll_event())
     }
 }
 
@@ -297,6 +301,6 @@ impl ReceiverSession {
     }
 
     pub fn events(&mut self) -> Vec<Ts<CoreEvent>> {
-        std::iter::from_fn(|| self.0.poll_event()).map(|e| ts(CoreEvent::from(e))).collect()
+        events(|| self.0.poll_event())
     }
 }

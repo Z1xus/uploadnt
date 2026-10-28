@@ -6,7 +6,6 @@ export class Attempt {
 	keys?: Keys;
 	private pake: Pake;
 	private queue: Signal[] = [];
-	// the sender holds its offer until the receiver says whether it agreed to plan b
 	private ready: boolean;
 	private closed = false;
 

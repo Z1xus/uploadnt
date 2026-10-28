@@ -39,7 +39,6 @@
 			.join('|')})(?![\\w-])`
 	);
 
-	// splits text so the first mention of each term in a paragraph becomes a link
 	function linked(text: string) {
 		const seen = new Set<string>();
 		return text.split(terms).map((part, i) => {
