@@ -36,7 +36,10 @@ const problems = [
 if (repo && !problems.length) {
 	const path = join(tmpdir(), `uploadnt-bundle-${bundle}.txt`);
 	writeFileSync(path, served);
-	const gh = Bun.spawnSync(['gh', 'attestation', 'verify', path, '--repo', repo], { stderr: 'inherit' });
+	const gh = Bun.spawnSync(
+		['gh', 'attestation', 'verify', path, '--repo', repo, '--source-digest', claimed.commit],
+		{ stderr: 'inherit' }
+	);
 	if (gh.exitCode !== 0) problems.push('no github attestation for this bundle');
 }
 

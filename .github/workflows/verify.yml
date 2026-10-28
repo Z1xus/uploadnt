@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - id: verify
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: bun deploy/verify.ts https://uploadnt.dev ${{ github.repository }} | tee result.json

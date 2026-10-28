@@ -29,6 +29,7 @@ jobs:
         with:
           subject-path: web/build/.well-known/bundle.txt
       - name: deploy
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         working-directory: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
