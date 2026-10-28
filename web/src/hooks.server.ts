@@ -5,7 +5,8 @@ const origin = import.meta.env.PUBLIC_ORIGIN ?? 'https://uploadnt.com';
 const pages: Record<string, [title: string, description: string]> = {
 	'/': ["uploadn't", 'send a file directly, with no third parties and no uploads.'],
 	'/get': ['someone is sending you a file', 'open the link to take it.'],
-	'/rest': ["how uploadn't works", 'where your file goes, and what we can see.']
+	'/rest': ["how uploadn't works", 'where your file goes, and what we can see.'],
+	'/webrtc': ['allowing webrtc', 'how to let your browser connect directly.']
 };
 
 function meta(path: string) {

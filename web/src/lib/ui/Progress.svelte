@@ -29,8 +29,8 @@
 	</p>
 {:else if path === 'blocked'}
 	<p class="mt-3 text-muted">
-		your browser blocks direct connections, so we're using <span class="text-accent">plan b</span> instead. allow
-		webrtc in its settings to make it faster.
+		your browser blocks direct connections, so we're using <span class="text-accent">plan b</span> instead.
+		<a href="/webrtc" target="_blank" class="underline">allow webrtc</a> in its settings to make it faster.
 	</p>
 {/if}
 {@render children?.()}

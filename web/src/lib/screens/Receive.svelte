@@ -21,7 +21,8 @@
 	<p class="mt-3 text-xl text-muted">this will transfer encrypted bytes over our relay.</p>
 	{#if r.blocked}
 		<p class="mt-3 text-muted">
-			your browser blocks direct connections. allowing webrtc in its settings fixes this.
+			your browser blocks direct connections.
+			<a href="/webrtc" target="_blank" class="underline">allowing webrtc</a> in its settings fixes this.
 		</p>
 	{/if}
 	<div class="mt-10"><Button onclick={() => r.planb()}>use plan b</Button></div>
