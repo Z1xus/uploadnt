@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use axum::Router;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -15,6 +16,8 @@ use uploadnt_core::Lobby;
 type Rooms = Arc<Mutex<HashMap<String, Vec<(u64, UnboundedSender<Vec<u8>>)>>>>;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+const PING: Duration = Duration::from_secs(20);
+const DEAD: Duration = Duration::from_secs(60);
 
 #[tokio::main]
 pub async fn main() {
@@ -55,19 +58,29 @@ async fn run(mut socket: WebSocket, mailbox: String, rooms: Rooms) {
         return;
     }
 
+    let mut ping = tokio::time::interval(PING);
+    let mut seen = Instant::now();
     loop {
         tokio::select! {
-            msg = socket.recv() => match msg {
-                Some(Ok(Message::Binary(bytes))) => {
-                    let relay = encode(&Lobby::Relay(bytes.to_vec()));
-                    let rooms = rooms.lock().unwrap();
-                    rooms[&mailbox].iter().filter(|(peer, _)| *peer != id).for_each(|(_, peer)| _ = peer.send(relay.clone()));
+            msg = socket.recv() => {
+                seen = Instant::now();
+                match msg {
+                    Some(Ok(Message::Binary(bytes))) => {
+                        let relay = encode(&Lobby::Relay(bytes.to_vec()));
+                        let rooms = rooms.lock().unwrap();
+                        rooms[&mailbox].iter().filter(|(peer, _)| *peer != id).for_each(|(_, peer)| _ = peer.send(relay.clone()));
+                    }
+                    Some(Ok(_)) => {}
+                    _ => break,
                 }
-                Some(Ok(_)) => {}
-                _ => break,
-            },
+            }
             Some(out) = rx.recv() => {
                 if socket.send(Message::Binary(out.into())).await.is_err() {
+                    break;
+                }
+            }
+            _ = ping.tick() => {
+                if seen.elapsed() > DEAD || socket.send(Message::Ping(Default::default())).await.is_err() {
                     break;
                 }
             }
