@@ -16,7 +16,7 @@
 <Percent {value} />
 <p class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-xl">
 	{#if label}<span>{@render label()}</span>{/if}
-	{#if rate}<span>{size(rate)}/s</span>{/if}
+	<span class="min-w-[9ch] tabular-nums">{rate ? `${size(rate)}/s` : ''}</span>
 	{#if path === 'direct'}
 		<span>direct</span>
 	{:else if path === 'relayed'}

@@ -1,19 +1,11 @@
 <script lang="ts">
-	import { random } from '#lib/marker.ts';
-
 	let { value }: { value: number } = $props();
 
 	const pct = $derived(Math.min(99, Math.floor(value * 100)));
-	const style = $derived.by(() => {
-		const rand = random(pct * 7919 + 1);
-		return `translate: ${(rand() - 0.5) * 12}px ${(rand() - 0.5) * 8}px`;
-	});
 </script>
 
-<div
-	class="-ml-[0.06em] text-[min(55dvh,48vw)] leading-[0.8] tabular-nums blur-(--bleed)"
-	{style}
-	aria-live="polite"
->
-	{pct}<span class="ml-[0.04em] align-top text-[0.28em] leading-none">%</span>
+<div class="-ml-[0.06em] text-[min(55dvh,48vw)] leading-[0.8] tabular-nums blur-(--bleed)" aria-live="polite">
+	<span class="inline-block min-w-[2ch]">{pct}</span><span
+		class="ml-[0.04em] align-top text-[0.28em] leading-none">%</span
+	>
 </div>

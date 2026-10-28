@@ -27,7 +27,9 @@
 				{f.webkitRelativePath || f.name} <span class="text-muted">{size(f.size)}</span>
 			</li>{/each}
 	</ul>
-	{#if s.hashed < s.total}<p class="mt-1 text-sm text-muted">preparing… {percent(s.hashed, s.total)}%</p>{/if}
+	<p class="mt-1 text-sm text-muted tabular-nums {s.hashed < s.total ? '' : 'invisible'}">
+		preparing… {percent(s.hashed, s.total)}%
+	</p>
 {/snippet}
 
 {#if s.phase === 'waiting' && s.more}
