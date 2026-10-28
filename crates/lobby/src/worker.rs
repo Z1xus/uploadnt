@@ -3,15 +3,37 @@ use worker::*;
 
 use crate::{MAX_MESSAGE, encode, valid_mailbox};
 
+const TURN_TTL_SECS: u32 = 12 * 3600;
+
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let path = req.path();
+    if path == "/turn/credentials" {
+        return turn(&env).await;
+    }
     match path.strip_prefix("/m/") {
         Some(mailbox) if valid_mailbox(mailbox) => {
             env.durable_object("LOBBY")?.id_from_name(mailbox)?.get_stub()?.fetch_with_request(req).await
         }
         _ => Response::error("nothing here", 404),
     }
+}
+
+async fn turn(env: &Env) -> Result<Response> {
+    let (Ok(id), Ok(token)) = (env.var("TURN_KEY_ID"), env.secret("TURN_KEY_API_TOKEN")) else {
+        return Response::error("no plan b here", 404);
+    };
+    let url = format!("https://rtc.live.cloudflare.com/v1/turn/keys/{id}/credentials/generate-ice-servers");
+    let headers = Headers::new();
+    headers.set("Authorization", &format!("Bearer {token}"))?;
+    headers.set("Content-Type", "application/json")?;
+    let mut init = RequestInit::new();
+    init.with_method(Method::Post).with_headers(headers).with_body(Some(format!("{{\"ttl\":{TURN_TTL_SECS}}}").into()));
+    let mut res = Fetch::Request(Request::new_with_init(&url, &init)?).send().await?;
+    let mut out = Response::from_bytes(res.bytes().await?)?.with_status(res.status_code());
+    out.headers_mut().set("Content-Type", "application/json")?;
+    out.headers_mut().set("Cache-Control", "no-store")?;
+    Ok(out)
 }
 
 #[durable_object]

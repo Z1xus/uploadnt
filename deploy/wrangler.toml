@@ -1,0 +1,22 @@
+name = "uploadnt"
+main = "../crates/lobby/build/worker/shim.mjs"
+compatibility_date = "2026-10-01"
+
+[build]
+command = "cd ../crates/lobby && cargo install -q worker-build@^0.8 && worker-build --release"
+
+[assets]
+directory = "../web/build"
+not_found_handling = "404-page"
+run_worker_first = ["/m/*", "/turn/*"]
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# set TURN_KEY_ID here and TURN_KEY_API_TOKEN with `wrangler secret put` to turn plan b on
+[vars]

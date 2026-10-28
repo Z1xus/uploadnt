@@ -1,4 +1,7 @@
 {
   "private": true,
-  "workspaces": ["web", "packages/*"]
+  "workspaces": ["web", "packages/*"],
+  "devDependencies": {
+    "wrangler": "^4.154.0"
+  }
 }
