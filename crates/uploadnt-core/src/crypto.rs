@@ -63,7 +63,7 @@ impl Keys {
     fn cipher(&self, label: &[u8]) -> ChaCha20Poly1305 {
         let mut key = [0; 32];
         Hkdf::<Sha256>::new(None, &self.key).expand(label, &mut key).unwrap();
-        ChaCha20Poly1305::new(Key::from_slice(&key))
+        ChaCha20Poly1305::new(&Key::from(key))
     }
 }
 

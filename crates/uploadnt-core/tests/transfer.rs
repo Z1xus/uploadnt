@@ -1,5 +1,5 @@
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use uploadnt_core::*;
 
 const SIZE: u64 = 1 << 30;
@@ -52,10 +52,10 @@ fn moves_a_gigabyte_through_a_hostile_transport() {
             now += 1;
             while let Some(msg) = sender.poll_transmit() {
                 // reliable data channels lose nothing, but a dying path loses pieces
-                if msg.len() > 1024 && rng.gen_bool(0.002) {
+                if msg.len() > 1024 && rng.random_bool(0.002) {
                     continue;
                 }
-                to_receiver[rng.gen_range(0..LANES)].push(msg);
+                to_receiver[rng.random_range(0..LANES)].push(msg);
             }
             while let Some(msg) = receiver.poll_transmit() {
                 to_sender.push(msg);
