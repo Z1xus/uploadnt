@@ -47,6 +47,7 @@
 			>
 			<a href="/rest" class="hover:underline">the rest</a>
 			<button class="hover:underline" onclick={toggle}>{isDark ? 'light' : 'dark'}</button>
+			<a href="https://github.com/Z1xus/uploadnt" class="hover:underline">source</a>
 		</footer>
 	</div>
 {/if}
