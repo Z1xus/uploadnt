@@ -151,7 +151,7 @@
 	];
 </script>
 
-<main class="mx-auto max-w-[58ch] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
+<main class="mx-auto max-w-[36rem] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
 	<p>this is how sending a file usually works:</p>
 	<Doodle kind="corp" seed={11} label="you, a big corp in a cloud holding your file, and your friend" />
 	<p>

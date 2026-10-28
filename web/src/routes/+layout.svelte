@@ -2,6 +2,7 @@
 	import '../app.css';
 	import type { Snippet } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
+	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -10,6 +11,8 @@
 		(!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
 
 	let isDark = $state(dark());
+	let shown = $state(false);
+	onMount(() => document.fonts.ready.then(() => (shown = true)));
 
 	const stats = import.meta.env.PUBLIC_IMPACTITE;
 	afterNavigate(({ from }) => {
@@ -34,10 +37,10 @@
 	}
 </script>
 
-<div class="flex min-h-dvh flex-col">
+<div class="flex min-h-dvh flex-col transition-opacity duration-200 {shown ? '' : 'hold opacity-0'}">
 	<div class="flex-1">{@render children()}</div>
 	<footer
-		class="mx-auto flex w-full max-w-[44rem] flex-wrap gap-x-4 gap-y-1 px-6 pt-16 pb-6 font-fine text-base text-graphite"
+		class="mx-auto flex w-full max-w-[36rem] flex-wrap gap-x-4 gap-y-1 px-6 pt-16 pb-6 font-fine text-base text-graphite"
 	>
 		<a href="https://z1x.us/" class="mr-auto underline-offset-2 hover:underline"
 			>provided to you by an individual with hatred in heart</a

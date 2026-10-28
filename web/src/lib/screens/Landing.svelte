@@ -5,12 +5,8 @@
 	import Struck from '../ui/Struck.svelte';
 	import type { Pending } from '../sending.svelte';
 
-	let {
-		seed,
-		previous,
-		again,
-		onfiles
-	}: { seed: number; previous?: Pending; again: boolean; onfiles: (files: File[]) => void } = $props();
+	let { seed, previous, onfiles }: { seed: number; previous?: Pending; onfiles: (files: File[]) => void } =
+		$props();
 
 	let input: HTMLInputElement;
 	let over = $state(false);
@@ -41,7 +37,7 @@
 	ondrop={drop}
 />
 
-<main class="relative mx-auto max-w-[58ch] px-6 pt-[14vh]">
+<main class="relative mx-auto max-w-[36rem] px-6 pt-[10vh]">
 	<h1 class="bleed text-[clamp(4rem,16vw,8.5rem)] leading-[0.9]">
 		<Struck seed={seed + 1} delay={200}>upload</Struck><Scrawl
 			seed={seed + 2}
@@ -56,7 +52,7 @@
 			: 'border-ink'}"
 	>
 		<p class="mb-8 text-xl">
-			{#if over}drop to send.{:else if again}choose more files for the same person.{:else if previous}choose <span
+			{#if over}drop to send.{:else if previous}choose <span
 					>{previous.files.map((f) => f.name).join(', ')}</span
 				> again to keep the same link.{:else}<span class="pointer-coarse:hidden"
 					>drop a file anywhere, or choose one.</span

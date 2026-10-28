@@ -54,6 +54,7 @@ export class Sending {
 	grievance = $state<Grievance>();
 	link = $state('');
 	readonly total: number;
+	readonly more: boolean;
 
 	secret: string;
 	private lobby?: Lobby;
@@ -75,6 +76,7 @@ export class Sending {
 		const same = JSON.stringify(previous?.files) === JSON.stringify(describe(files));
 		// a reused link must carry the same bytes, so wait for the root before joining
 		const check = same ? previous!.root : undefined;
+		this.more = !!again;
 		this.secret = check ? previous!.secret : (again ?? newSecret());
 		this.link = `${location.origin}/#${this.secret}`;
 		this.total = files.reduce((n, f) => n + f.size, 0);

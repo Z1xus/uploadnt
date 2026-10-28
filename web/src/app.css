@@ -16,7 +16,7 @@
 @font-face {
 	font-family: Redaction;
 	src: url('../../design/fonts/Redaction70-Regular.woff2') format('woff2');
-	font-display: swap;
+	font-display: block;
 }
 
 @theme inline {
@@ -90,7 +90,7 @@ html {
 }
 
 .stamp {
-	animation: slam 120ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both;
+	animation: fade 200ms ease-out both;
 }
 
 /* a dash of length zero still gets a round cap, so every stroke that hasn't started yet is a little red dot. i hate it */
@@ -115,17 +115,6 @@ html {
 @keyframes wipe {
 	to {
 		clip-path: inset(-100% -5% -100% -5%);
-	}
-}
-
-@keyframes slam {
-	from {
-		transform: scale(1.6);
-		opacity: 0;
-	}
-	to {
-		transform: scale(1);
-		opacity: 1;
 	}
 }
 
@@ -155,4 +144,8 @@ html {
 	stroke: var(--paper);
 	stroke-width: 10px;
 	stroke-linejoin: round;
+}
+
+.hold * {
+	animation-play-state: paused;
 }

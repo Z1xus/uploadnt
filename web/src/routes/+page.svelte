@@ -14,7 +14,6 @@
 	let sending = $state<Sending>();
 	let receiving = $state<Receiving>();
 	let previous = $state<Pending>();
-	let again = $state<string>();
 	const busy = $derived(sending?.phase === 'sending' || receiving?.phase === 'receiving');
 
 	beforeNavigate(({ cancel }) => {
@@ -25,38 +24,41 @@
 		receiving?.close();
 	});
 
-	const ready = loadCore().then(async () => {
-		if (fragment) receiving = new Receiving(fragment);
-		else previous = await pending();
-	});
+	const ready = fragment
+		? loadCore().then(() => (receiving = new Receiving(fragment)))
+		: (loadCore(), pending().then((p) => (previous = p)));
 </script>
 
 <svelte:window onhashchange={() => location.reload()} />
 
-{#await ready then}
+{#await ready}
+	{#if fragment}
+		<main class="relative mx-auto max-w-[36rem] px-6 pt-[10vh]">
+			<p class="text-2xl text-graphite">connecting…</p>
+		</main>
+	{/if}
+{:then}
 	{#if receiving}
 		<Receive r={receiving} {fragment} />
 	{:else if sending}
 		<Send
 			s={sending}
 			onback={async () => {
-				again = undefined;
 				sending?.cancel();
 				sending = undefined;
 				previous = await pending();
 			}}
-			onmore={() => {
-				again = sending?.secret;
-				sending?.cancel();
-				sending = undefined;
+			onmore={(files: File[]) => {
+				const secret = sending!.secret;
+				sending!.cancel();
+				sending = new Sending(files, undefined, secret);
 			}}
 		/>
 	{:else}
 		<Landing
 			{seed}
 			{previous}
-			again={!!again}
-			onfiles={(files: File[]) => (sending = new Sending(files, previous, again))}
+			onfiles={(files: File[]) => loadCore().then(() => (sending = new Sending(files, previous)))}
 		/>
 	{/if}
 {/await}

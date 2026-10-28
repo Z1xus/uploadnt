@@ -3,9 +3,8 @@
 	import type { Receiving } from '../receiving.svelte';
 	import { size } from '../rate';
 	import { grievances } from '../grievance';
-	import Digit from '../ui/Digit.svelte';
 	import Done from '../ui/Done.svelte';
-	import Path from '../ui/Path.svelte';
+	import Progress from '../ui/Progress.svelte';
 	import Stamp from '../ui/Stamp.svelte';
 
 	let { r, fragment }: { r: Receiving; fragment: string } = $props();
@@ -13,7 +12,7 @@
 	const seed = $derived(seedOf(fragment));
 </script>
 
-<main class="relative mx-auto max-w-[58ch] px-6 pt-[10vh]">
+<main class="relative mx-auto max-w-[36rem] px-6 pt-[10vh]">
 	{#if r.phase === 'connecting'}
 		<p class="text-2xl text-graphite">
 			{r.alone ? 'waiting for the sender. their tab needs to be open.' : 'connecting…'}
@@ -29,11 +28,9 @@
 		<p class="mt-3 text-xl text-graphite">{size(r.size)}</p>
 		<div class="mt-12"><Stamp onclick={() => r.take()}>take it</Stamp></div>
 	{:else if r.phase === 'receiving'}
-		<Digit value={r.bytes / Math.max(r.size, 1)} />
-		<p class="mt-6 flex flex-wrap items-baseline gap-x-6 text-xl">
-			{#if r.rate}<span>{size(r.rate)}/s</span>{/if}<Path path={r.path} />
-		</p>
-		<p class="mt-3 text-graphite">{r.where}</p>
+		<Progress value={r.bytes / Math.max(r.size, 1)} rate={r.rate} path={r.path}>
+			<p class="mt-3 text-graphite">{r.where}</p>
+		</Progress>
 	{:else if r.phase === 'done'}
 		<Done names={r.files.map((f) => f.name)} />
 		<p class="mt-6 text-xl">received.</p>
