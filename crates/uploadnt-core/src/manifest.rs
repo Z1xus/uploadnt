@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 pub const CHUNK: u32 = 1 << 20;
-// browsers disagree on the largest data channel message; 64 KiB passes everywhere
-pub const PIECE: u32 = 1 << 16;
+// a piece plus its framing must fit the 64 KiB data channel message limit
+pub const PIECE: u32 = 63 << 10;
+pub const MAX_NAME: usize = 1024;
+pub const MAX_MIME: usize = 255;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileEntry {
@@ -37,7 +39,8 @@ impl Manifest {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.files.iter().map(FileEntry::chunks).sum::<u32>() == self.chunks()
+        self.files.iter().all(|f| f.name.len() <= MAX_NAME && f.mime.len() <= MAX_MIME)
+            && self.files.iter().map(FileEntry::chunks).sum::<u32>() == self.chunks()
     }
 
     pub fn locate(&self, chunk: u32) -> Option<(u32, u64, u32)> {

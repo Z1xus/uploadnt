@@ -5,7 +5,8 @@ use crate::{Bitmap, Channel, Error, FileEntry, Frame, Manifest, PIECE, VERSION, 
 const MIN_WINDOW: usize = 4;
 const MAX_WINDOW: usize = 32;
 const STALL_MS: u64 = 10_000;
-// keeps a hashes frame under the 64 KiB data channel message limit
+// keeps files and hashes frames under the 64 KiB data channel message limit
+const FILES_PER_FRAME: usize = 40;
 const HASHES_PER_FRAME: usize = 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,7 +62,10 @@ pub struct Sender {
 impl Sender {
     pub fn new(channel: Channel, manifest: Manifest) -> Self {
         let mut link = Link::new(channel);
-        link.send(&Frame::Files(manifest.files.clone()));
+        let count = manifest.files.len() as u32;
+        for (i, files) in manifest.files.chunks(FILES_PER_FRAME).enumerate() {
+            link.send(&Frame::Files { count, start: (i * FILES_PER_FRAME) as u32, files: files.to_vec() });
+        }
         for (i, hashes) in manifest.hashes.chunks(HASHES_PER_FRAME).enumerate() {
             link.send(&Frame::Hashes { start: (i * HASHES_PER_FRAME) as u32, hashes: hashes.to_vec() });
         }
@@ -119,6 +123,36 @@ impl Sender {
     }
 }
 
+struct Parts<T>(Vec<(u32, Vec<T>)>);
+
+impl<T> Parts<T> {
+    fn add(&mut self, start: u32, items: Vec<T>) {
+        if !self.0.iter().any(|(s, _)| *s == start) {
+            self.0.push((start, items));
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.0.iter().map(|(_, items)| items.len()).sum()
+    }
+
+    fn items(&self) -> impl Iterator<Item = &T> {
+        self.0.iter().flat_map(|(_, items)| items)
+    }
+
+    fn take(&mut self) -> Result<Vec<T>, Error> {
+        self.0.sort_by_key(|(start, _)| *start);
+        let mut all = Vec::with_capacity(self.len());
+        for (start, items) in self.0.drain(..) {
+            if start as usize != all.len() {
+                return Err(Error::Protocol);
+            }
+            all.extend(items);
+        }
+        Ok(all)
+    }
+}
+
 struct Partial {
     data: Vec<u8>,
     pieces: Bitmap,
@@ -126,8 +160,9 @@ struct Partial {
 
 pub struct Receiver {
     link: Link,
-    files: Option<Vec<FileEntry>>,
-    parts: Vec<(u32, Vec<[u8; 32]>)>,
+    file_count: Option<u32>,
+    files: Parts<FileEntry>,
+    hashes: Parts<[u8; 32]>,
     manifest: Option<Manifest>,
     have: Bitmap,
     inflight: HashMap<u32, Partial>,
@@ -143,8 +178,9 @@ impl Receiver {
     pub fn new(channel: Channel) -> Self {
         Self {
             link: Link::new(channel),
-            files: None,
-            parts: Vec::new(),
+            file_count: None,
+            files: Parts(Vec::new()),
+            hashes: Parts(Vec::new()),
             manifest: None,
             have: Bitmap::new(0),
             inflight: HashMap::new(),
@@ -168,14 +204,15 @@ impl Receiver {
     pub fn handle(&mut self, msg: &[u8], now: u64) -> Result<(), Error> {
         match self.link.open(msg)? {
             Frame::Hello { version } => check_version(version)?,
-            Frame::Files(files) if self.files.is_none() => {
-                self.files = Some(files);
+            Frame::Files { count, start, files } if self.manifest.is_none() => {
+                if *self.file_count.get_or_insert(count) != count {
+                    return Err(Error::Protocol);
+                }
+                self.files.add(start, files);
                 self.assemble()?;
             }
             Frame::Hashes { start, hashes } if self.manifest.is_none() => {
-                if !self.parts.iter().any(|(s, _)| *s == start) {
-                    self.parts.push((start, hashes));
-                }
+                self.hashes.add(start, hashes);
                 self.assemble()?;
             }
             Frame::Piece { chunk, offset, data } => self.piece(chunk, offset, &data, now)?,
@@ -242,24 +279,24 @@ impl Receiver {
     }
 
     fn assemble(&mut self) -> Result<(), Error> {
-        let Some(files) = &self.files else { return Ok(()) };
-        let total = files.iter().map(FileEntry::chunks).sum::<u32>() as usize;
-        let got: usize = self.parts.iter().map(|(_, h)| h.len()).sum();
-        if got > total {
+        let Some(count) = self.file_count else { return Ok(()) };
+        if self.files.len() > count as usize {
             return Err(Error::Protocol);
         }
-        if got < total {
+        if self.files.len() < count as usize {
             return Ok(());
         }
-        self.parts.sort_by_key(|(start, _)| *start);
-        let mut hashes = Vec::with_capacity(total);
-        for (start, part) in self.parts.drain(..) {
-            if start as usize != hashes.len() {
-                return Err(Error::Protocol);
-            }
-            hashes.extend(part);
+        let total = self.files.items().map(FileEntry::chunks).sum::<u32>() as usize;
+        if self.hashes.len() > total {
+            return Err(Error::Protocol);
         }
-        let manifest = Manifest { files: self.files.take().unwrap(), hashes };
+        if self.hashes.len() < total {
+            return Ok(());
+        }
+        let manifest = Manifest { files: self.files.take()?, hashes: self.hashes.take()? };
+        if !manifest.is_valid() {
+            return Err(Error::Protocol);
+        }
         self.have = Bitmap::new(manifest.chunks());
         self.link.events.push_back(Event::Manifest { manifest: manifest.clone() });
         self.manifest = Some(manifest);

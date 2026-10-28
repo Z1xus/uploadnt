@@ -9,7 +9,11 @@ pub enum Frame {
     Hello {
         version: u16,
     },
-    Files(Vec<FileEntry>),
+    Files {
+        count: u32,
+        start: u32,
+        files: Vec<FileEntry>,
+    },
     Hashes {
         start: u32,
         hashes: Vec<[u8; 32]>,
