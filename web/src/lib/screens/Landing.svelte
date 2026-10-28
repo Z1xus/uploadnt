@@ -42,7 +42,10 @@
 			: 'border-ink'}"
 		use:tilted={seed + 3}
 	>
-		<p class="mb-8 text-xl">{over ? 'let go.' : 'drop a file anywhere on this page.'}</p>
+		<p class="mb-8 text-xl">
+			{#if over}let go.{:else}<span class="pointer-coarse:hidden">drop a file anywhere on this page.</span
+				><span class="hidden pointer-coarse:inline">pick a file.</span>{/if}
+		</p>
 		<Stamp onclick={() => input.click()}>give it away</Stamp>
 		<input
 			bind:this={input}

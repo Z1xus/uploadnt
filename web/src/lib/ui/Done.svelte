@@ -4,7 +4,7 @@
 	let { names }: { names: string[] } = $props();
 </script>
 
-<div class="relative pb-6 text-4xl break-words">
+<div class="relative pb-6 text-4xl break-words normal-case">
 	{names.join(', ')}
 	<svg
 		class="mark absolute inset-x-0 bottom-0 h-3 w-full overflow-visible"

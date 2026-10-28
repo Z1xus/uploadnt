@@ -36,7 +36,7 @@
 		<div class="mt-10 flex flex-wrap items-end gap-10">
 			<div use:tilted={seed + 2}><Qr text={s.link} /></div>
 			<ul class="space-y-1 text-lg" use:tilted={seed + 3}>
-				{#each s.files as f}<li class="break-all">
+				{#each s.files as f}<li class="break-all normal-case">
 						{f.webkitRelativePath || f.name} <span class="text-graphite">{size(f.size)}</span>
 					</li>{/each}
 			</ul>

@@ -21,7 +21,7 @@
 		</p>
 	{:else if r.phase === 'offered'}
 		<ul class="space-y-1 text-3xl" use:tilted={seed}>
-			{#each r.files as f}<li class="break-all">{f.name}</li>{/each}
+			{#each r.files as f}<li class="break-all normal-case">{f.name}</li>{/each}
 		</ul>
 		<p class="mt-3 text-xl text-graphite">{size(r.size)}</p>
 		<div class="mt-12"><Stamp onclick={() => r.take()}>take it</Stamp></div>
