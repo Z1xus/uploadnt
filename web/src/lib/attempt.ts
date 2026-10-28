@@ -8,6 +8,7 @@ export class Attempt {
 	private queue: Signal[] = [];
 	// the sender holds its offer until the receiver says whether it agreed to plan b
 	private ready: boolean;
+	private closed = false;
 
 	constructor(
 		secret: string,
@@ -43,6 +44,8 @@ export class Attempt {
 	}
 
 	close() {
+		if (this.closed) return;
+		this.closed = true;
 		this.peer.close();
 		this.pake.free();
 		this.keys?.free();

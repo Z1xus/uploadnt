@@ -24,7 +24,14 @@
 	{#if receiving}
 		<Receive r={receiving} {fragment} />
 	{:else if sending}
-		<Send s={sending} />
+		<Send
+			s={sending}
+			onback={async () => {
+				sending?.cancel();
+				sending = undefined;
+				previous = await pending();
+			}}
+		/>
 	{:else}
 		<Landing {seed} {previous} onfiles={(files: File[]) => (sending = new Sending(files, previous))} />
 	{/if}

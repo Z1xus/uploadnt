@@ -4,7 +4,7 @@ export const grievances = {
 	mismatch: "This link doesn't match. Ask for it again.",
 	version: "You're on different versions. Both of you reload the page.",
 	unreachable: "Couldn't connect. Try a different network.",
-	left: 'The other person closed the tab.',
+	left: 'The other person stopped the transfer.',
 	room: 'Not enough storage in this browser. Try Chrome on a computer.',
 	safari: 'Keep this tab in front, or Safari will pause the transfer.',
 	broken: 'Something went wrong. Reload and try again.'

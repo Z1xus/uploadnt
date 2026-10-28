@@ -95,6 +95,13 @@ export class Sending {
 		this.lobby = new Lobby(Lobby.url(parseLink(this.secret)!.mailbox), (e) => this.onLobby(e));
 	}
 
+	cancel() {
+		record((p) => (p?.secret === this.secret ? undefined : p));
+		this.session?.close('cancelled');
+		this.flush();
+		this.close();
+	}
+
 	close() {
 		this.lobby?.close();
 		this.attempt?.close();

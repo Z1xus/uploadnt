@@ -11,7 +11,9 @@
 	import Qr from '../ui/Qr.svelte';
 	import Stamp from '../ui/Stamp.svelte';
 
-	let { s }: { s: Sending } = $props();
+	let { s, onback }: { s: Sending; onback: () => void } = $props();
+
+	const back = 'mt-10 block cursor-pointer text-graphite underline-offset-4 hover:underline';
 
 	const seed = $derived(seedOf(s.link));
 	let copied = $state(false);
@@ -40,6 +42,7 @@
 			Keep this tab open
 			<Mark kind="underline" seed={seed + 5} delay={300} class="inset-x-0 -bottom-2 h-2 w-full" />
 		</p>
+		<button class={back} onclick={onback}>Cancel</button>
 		{#if s.hashed < s.total}
 			<Margin><p>Preparing… {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
 		{/if}
@@ -47,8 +50,10 @@
 		<Digit value={s.bytes / Math.max(s.total, 1)} />
 		<p class="mt-6 text-xl">not uploading{s.rate ? ` · ${size(s.rate)}/s` : ''}</p>
 		<p class="mt-3 text-xl"><Path path={s.path} /></p>
+		<button class={back} onclick={onback}>Cancel</button>
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />
+		<div class="mt-10"><Stamp onclick={onback}>Send Another</Stamp></div>
 	{:else}
 		<p class="text-3xl text-marker">{grievances[s.grievance ?? 'broken']}</p>
 		<div class="mt-10"><Stamp onclick={() => location.reload()}>start over</Stamp></div>
