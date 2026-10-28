@@ -117,6 +117,10 @@ export class Sending {
 		this.close();
 	}
 
+	get peer() {
+		return this.attempt?.peer;
+	}
+
 	close() {
 		this.closed = true;
 		this.lobby?.close();

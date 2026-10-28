@@ -96,6 +96,10 @@ export class Receiving {
 		else this.fail('unreachable');
 	}
 
+	get peer() {
+		return this.attempt?.peer;
+	}
+
 	close() {
 		clearInterval(this.timer);
 		clearTimeout(this.alone_timer);

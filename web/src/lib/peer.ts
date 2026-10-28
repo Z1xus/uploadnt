@@ -7,7 +7,23 @@ export type Path = 'direct' | 'relayed' | 'tcp';
 export type Signal =
 	{ sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { relay: boolean };
 
+export type Candidate = { type: string; protocol: string; family: string };
+
+export type Report = {
+	state: RTCPeerConnectionState;
+	local: Candidate[];
+	remote: Candidate[];
+	pair?: { local: Candidate; remote: Candidate; rtt?: number };
+};
+
 const ICE_MAX_AGE_MS = 3600_000;
+
+// only the kind of address, so debug screenshots show no ips. browsers leave mdns-hidden local addresses out of stats
+function candidate(c: { candidateType: string; protocol: string; relayProtocol?: string; address?: string }) {
+	const a = c.address ?? '';
+	const family = !a || a.endsWith('.local') ? 'mdns' : a.includes(':') ? 'ipv6' : 'ipv4';
+	return { type: c.candidateType, protocol: c.relayProtocol ?? c.protocol, family };
+}
 
 const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
 
@@ -139,16 +155,31 @@ export class Peer {
 		}
 	}
 
-	async path(): Promise<Path> {
-		const stats = await this.pc!.getStats();
-		for (const r of stats.values()) {
-			if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
-				const local = stats.get(r.localCandidateId);
-				const remote = stats.get(r.remoteCandidateId);
-				if (local?.relayProtocol === 'tcp' || local?.relayProtocol === 'tls') return 'tcp';
-				if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') return 'relayed';
+	async report(): Promise<Report | undefined> {
+		const pc = this.pc;
+		if (!pc) return;
+		const stats = await pc.getStats();
+		const all = [...stats.values()];
+		const transport = all.find((r) => r.type === 'transport');
+		const pair =
+			stats.get(transport?.selectedCandidatePairId) ??
+			all.find((r) => r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded');
+		return {
+			state: pc.connectionState,
+			local: all.filter((r) => r.type === 'local-candidate').map(candidate),
+			remote: all.filter((r) => r.type === 'remote-candidate').map(candidate),
+			pair: pair && {
+				local: candidate(stats.get(pair.localCandidateId)),
+				remote: candidate(stats.get(pair.remoteCandidateId)),
+				rtt: pair.currentRoundTripTime
 			}
-		}
+		};
+	}
+
+	async path(): Promise<Path> {
+		const pair = (await this.report())?.pair;
+		if (pair?.local.type === 'relay' && pair.local.protocol !== 'udp') return 'tcp';
+		if (pair?.local.type === 'relay' || pair?.remote.type === 'relay') return 'relayed';
 		return 'direct';
 	}
 

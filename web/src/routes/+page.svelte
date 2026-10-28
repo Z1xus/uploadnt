@@ -5,11 +5,13 @@
 	import Landing from '#lib/screens/Landing.svelte';
 	import Receive from '#lib/screens/Receive.svelte';
 	import Send from '#lib/screens/Send.svelte';
+	import Debug from '#lib/ui/Debug.svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { onDestroy } from 'svelte';
 
 	const seed = Math.floor(Math.random() * 2 ** 31);
 	const fragment = location.hash.slice(1);
+	const debugging = new URLSearchParams(location.search).has('debug');
 
 	let sending = $state<Sending>();
 	let receiving = $state<Receiving>();
@@ -56,5 +58,8 @@
 			{previous}
 			onfiles={(files: File[]) => loadCore().then(() => (sending = new Sending(files, previous)))}
 		/>
+	{/if}
+	{#if debugging && (sending || receiving)}
+		<Debug peer={() => (sending ?? receiving)?.peer} />
 	{/if}
 {/await}
