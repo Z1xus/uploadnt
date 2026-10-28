@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,wasm-pack
+      - uses: oven-sh/setup-bun@v2
+      - run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+      - run: cargo test --release --workspace
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      - run: bun install --frozen-lockfile
+      - run: just web && bun deploy/provenance.ts web/build
+        env:
+          PUBLIC_IMPACTITE: ${{ vars.IMPACTITE }}
+      - run: bun run check
+        working-directory: web
+      - if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: web/build/.well-known/bundle.txt
