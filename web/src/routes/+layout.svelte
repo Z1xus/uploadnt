@@ -40,14 +40,16 @@
 
 {#if shown}
 	<div class="mx-auto flex min-h-dvh max-w-xl flex-col px-6" transition:fade={{ duration: 200 }}>
-		<main class="relative flex-1 pt-[10dvh]">{@render children()}</main>
+		<main class="flex-1 pt-[10dvh]"><div class="relative">{@render children()}</div></main>
 		<footer class="flex flex-wrap gap-x-4 gap-y-1 pt-16 pb-6 font-serif text-muted">
 			<a href="https://z1x.us/" class="mr-auto hover:underline"
 				>provided to you by an individual with hatred in heart</a
 			>
-			<a href="/rest" class="hover:underline">the rest</a>
-			<button class="hover:underline" onclick={toggle}>{isDark ? 'light' : 'dark'}</button>
-			<a href="https://github.com/Z1xus/uploadnt" class="hover:underline">source</a>
+			<span class="flex gap-x-4">
+				<a href="/rest" class="hover:underline">the rest</a>
+				<button class="hover:underline" onclick={toggle}>{isDark ? 'light' : 'dark'}</button>
+				<a href="https://github.com/Z1xus/uploadnt" class="hover:underline">source</a>
+			</span>
 		</footer>
 	</div>
 {/if}

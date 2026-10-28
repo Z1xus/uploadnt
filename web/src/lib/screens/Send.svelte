@@ -3,7 +3,6 @@
 	import type { Sending } from '../sending.svelte';
 	import { percent, size } from '../rate';
 	import Arrow from '../ui/Arrow.svelte';
-	import Aside from '../ui/Aside.svelte';
 	import Button from '../ui/Button.svelte';
 	import Failure from '../ui/Failure.svelte';
 	import Mark from '../ui/Mark.svelte';
@@ -28,6 +27,7 @@
 				{f.webkitRelativePath || f.name} <span class="text-muted">{size(f.size)}</span>
 			</li>{/each}
 	</ul>
+	{#if s.hashed < s.total}<p class="mt-1 text-sm text-muted">preparing… {percent(s.hashed, s.total)}%</p>{/if}
 {/snippet}
 
 {#if s.phase === 'waiting' && s.more}
@@ -57,9 +57,6 @@
 	</div>
 	<p class="mt-14 text-3xl"><Mark kind="underline" seed={seed + 5} delay={300}>keep this tab open</Mark></p>
 	<button class="mt-10 block text-muted hover:underline" onclick={onback}>cancel</button>
-	{#if s.hashed < s.total}
-		<Aside><p>preparing… {percent(s.hashed, s.total)}%</p></Aside>
-	{/if}
 {:else if s.phase === 'sending'}
 	<Progress value={s.bytes / Math.max(s.total, 1)} rate={s.rate} path={s.path}>
 		{#snippet label()}<Mark kind="underline" seed={seed + 9}>not</Mark> uploading{/snippet}
