@@ -8,7 +8,7 @@
 </script>
 
 <svg
-	class="my-2 block w-full max-w-md overflow-visible"
+	class="my-2 block w-full max-w-md overflow-visible select-none"
 	viewBox="0 0 320 {seq.height}"
 	role="img"
 	aria-label={steps.map((s) => `${lanes[s.from]} to ${lanes[s.to]}: ${s.label}`).join('. ')}

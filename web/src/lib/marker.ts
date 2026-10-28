@@ -89,3 +89,16 @@ export function scrawl(seed: number) {
 	const rand = random(seed);
 	return NT.map((stroke) => smooth(jitter(stroke, rand, 3.2)));
 }
+
+export function circle(seed: number) {
+	const rand = random(seed);
+	const start = rand() * Math.PI * 2;
+	const points: Point[] = [];
+	// a little past a full turn, like a pen that doesn't quite stop where it began
+	for (let i = 0; i <= 12; i++) {
+		const a = start + (i / 12) * Math.PI * 2.15;
+		const r = 15 + (rand() - 0.5) * 2.5 + i * 0.15;
+		points.push([20 + Math.cos(a) * r, 20 + Math.sin(a) * r * 0.9]);
+	}
+	return smooth(points);
+}

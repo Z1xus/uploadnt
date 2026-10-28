@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Step } from '#lib/doodle.ts';
+	import { circle } from '#lib/marker.ts';
+	import Strokes from '#lib/ui/Strokes.svelte';
 	import Doodle from '#lib/ui/Doodle.svelte';
 	import Sequence from '#lib/ui/Sequence.svelte';
 
@@ -201,10 +203,12 @@
 			{#each nerd as n, i}
 				<li id={n.title.replaceAll(' ', '-')} class="scroll-mt-8">
 					<h3>
-						<a
-							href="#{n.title.replaceAll(' ', '-')}"
-							class="flex items-baseline gap-3 text-xl text-foreground"
-							><span class="font-serif text-accent">{String(i + 1).padStart(2, '0')}</span>{n.title}</a
+						<a href="#{n.title.replaceAll(' ', '-')}" class="flex items-center gap-3 text-xl text-foreground"
+							><span class="relative grid size-9 shrink-0 place-items-center text-base"
+								>{i + 1}<svg class="absolute inset-0 overflow-visible" viewBox="0 0 40 40" aria-hidden="true"
+									><Strokes strokes={[{ d: circle(i * 31 + 7), tone: 'accent' }]} width={2} step={0} /></svg
+								></span
+							>{n.title}</a
 						>
 					</h3>
 					<p class="mt-2">

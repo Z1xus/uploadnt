@@ -8,7 +8,7 @@
 </script>
 
 <svg
-	class="block w-full max-w-md overflow-visible"
+	class="block w-full max-w-md overflow-visible select-none"
 	viewBox={kind === 'planb' ? '0 60 320 115' : '0 0 320 175'}
 	role="img"
 	aria-label={label}
