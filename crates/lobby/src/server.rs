@@ -5,9 +5,9 @@ use std::time::{Duration, Instant, SystemTime};
 
 use axum::Router;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Path, State};
+use axum::extract::{Path, Request, State};
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
-use axum::middleware::map_response;
+use axum::middleware::{map_request_with_state, map_response};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use lobby::{MAX_MESSAGE, Stats, coturn_credentials, encode, valid_mailbox};
@@ -37,7 +37,9 @@ pub async fn main() {
     let site = std::env::var("SITE").unwrap_or_else(|_| "web/build".into());
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:8787".into());
     let headers = Arc::new(site_headers(&format!("{site}/_headers")));
-    let pages = ServeDir::new(&site).fallback(ServeFile::new(format!("{site}/index.html")));
+    let pages = Router::new()
+        .fallback_service(ServeDir::new(&site).fallback(ServeFile::new(format!("{site}/index.html"))))
+        .layer(map_request_with_state(Arc::<str>::from(site.as_str()), html_page));
     let app = Router::new()
         .route("/m/{mailbox}", get(join))
         .route("/m/{mailbox}/turn", get(turn))
@@ -89,6 +91,15 @@ async fn turn(Path(mailbox): Path<String>, State(app): State<App>) -> Response {
     }
     let body = coturn_credentials(&urls, &secret, now().as_secs(), &mailbox);
     ([(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-store")], body).into_response()
+}
+
+// a path without a dot cannot climb out of the site folder
+async fn html_page(State(site): State<Arc<str>>, mut req: Request) -> Request {
+    let path = req.uri().path();
+    if path != "/" && !path.contains('.') && std::path::Path::new(&format!("{site}{path}.html")).is_file() {
+        *req.uri_mut() = format!("{path}.html").parse().unwrap();
+    }
+    req
 }
 
 async fn stats(State(app): State<App>) -> Response {

@@ -19,6 +19,8 @@ export type Pending = { secret: string; files: { name: string; size: number }[];
 const PENDING = 'sending.json';
 const PENDING_MAX_AGE_MS = 24 * 3600_000;
 
+const linkFor = (secret: string) => `${location.origin}/get#${secret}`;
+
 const describe = (files: File[]) =>
 	files.map((f) => ({ name: f.webkitRelativePath || f.name, size: f.size }));
 
@@ -79,7 +81,7 @@ export class Sending {
 		const check = same ? previous!.root : undefined;
 		this.more = !!again;
 		this.secret = check ? previous!.secret : (again ?? newSecret());
-		this.link = `${location.origin}/#${this.secret}`;
+		this.link = linkFor(this.secret);
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();
 		record(() => ({ secret: this.secret, files: describe(files), root: check, at: Date.now() }));
@@ -89,7 +91,7 @@ export class Sending {
 				const root = builder.root();
 				if (check && root !== check) {
 					this.secret = newSecret();
-					this.link = `${location.origin}/#${this.secret}`;
+					this.link = linkFor(this.secret);
 				}
 				record(() => ({ secret: this.secret, files: describe(files), root, at: Date.now() }));
 				if (check) this.join();
