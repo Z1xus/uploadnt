@@ -149,7 +149,7 @@ class Direct implements Sink {
 
 export async function openSink(root: string, files: JsFile[], size: number): Promise<Sink> {
 	const target = await pick(files);
-	const where = target ? `into ${target.name}` : 'into your downloads, at the end';
+	const where = target ? `Saving to ${target.name}` : 'Saves to Downloads when finished';
 	const { quota = 0, usage = 0 } = await navigator.storage.estimate().catch((): StorageEstimate => ({}));
 	const opfs = 'getDirectory' in navigator.storage;
 	const resuming =

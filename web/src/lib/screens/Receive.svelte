@@ -7,7 +7,6 @@
 	import Done from '../ui/Done.svelte';
 	import Path from '../ui/Path.svelte';
 	import Stamp from '../ui/Stamp.svelte';
-	import { tilted } from '../ui/tilt';
 
 	let { r, fragment }: { r: Receiving; fragment: string } = $props();
 
@@ -16,11 +15,15 @@
 
 <main class="relative mx-auto max-w-[58ch] px-6 pt-[10vh]">
 	{#if r.phase === 'connecting'}
-		<p class="text-2xl text-graphite" use:tilted={seed}>
-			{r.alone ? "the other end isn't here. their tab has to be open." : 'finding the other end.'}
+		<p class="text-2xl text-graphite">
+			{r.alone ? 'Waiting for the sender. Their tab needs to be open.' : 'Connecting…'}
 		</p>
+	{:else if r.phase === 'ask'}
+		<p class="text-3xl">Can't Connect Directly</p>
+		<p class="mt-3 text-xl text-graphite">This will transfer encrypted bytes over our relay.</p>
+		<div class="mt-12"><Stamp onclick={() => r.planb()}>Use Plan B</Stamp></div>
 	{:else if r.phase === 'offered'}
-		<ul class="space-y-1 text-3xl" use:tilted={seed}>
+		<ul class="space-y-1 text-3xl">
 			{#each r.files as f}<li class="break-all normal-case">{f.name}</li>{/each}
 		</ul>
 		<p class="mt-3 text-xl text-graphite">{size(r.size)}</p>
@@ -32,7 +35,7 @@
 	{:else if r.phase === 'done'}
 		<Done names={r.files.map((f) => f.name)} />
 	{:else}
-		<p class="text-3xl text-marker" use:tilted={seed}>{grievances[r.grievance ?? 'broken']}</p>
+		<p class="text-3xl text-marker">{grievances[r.grievance ?? 'broken']}</p>
 		{#if r.grievance !== 'link' && r.grievance !== 'full'}
 			<div class="mt-10"><Stamp onclick={() => location.reload()}>try again</Stamp></div>
 		{/if}

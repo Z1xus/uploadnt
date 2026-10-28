@@ -1,38 +1,29 @@
 <script lang="ts">
 	const SOURCE = 'https://github.com/Z1xus/uploadnt';
 	const stats = import.meta.env.PUBLIC_IMPACTITE;
+	const link = 'underline underline-offset-4';
 </script>
 
 <main class="mx-auto max-w-[58ch] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
-	<h2 class="text-2xl">how it works</h2>
+	<p>Files go directly from your browser to the other person's. Nothing is uploaded or stored.</p>
+	<p>The link holds the encryption key. The part after # never leaves your browser.</p>
 	<p>
-		the file goes straight from your browser to theirs. the key lives in the link after the #. browsers never
-		send that part to any server
+		A small server, the lobby, connects the two browsers. If they can't connect directly, you can choose to
+		send encrypted bytes through our relay, plan b. It doesn't keep anything.
 	</p>
 	<p>
-		a small server called the lobby introduces the two browsers to each other. then its out of the picture
-	</p>
-	<p>
-		sometimes two networks cant connect directly, so the bytes go through a relay called plan b. it just
-		passes the encrypted bytes along and keeps nothing. the page says plan b when that happens
-	</p>
-	<h2 class="pt-4 text-2xl">privacy</h2>
-	<p>
-		the lobby and plan b see your ip while youre connected and dont write it down. the only thing kept is a
-		daily count of how many transfers went direct and how many needed plan b
+		The lobby and plan b see your IP address while you're connected and don't store it. The only thing kept is
+		a daily count of direct and plan b transfers.
 	</p>
 	{#if stats}
 		<p>
-			page visits here are counted with <a href={stats} class="underline underline-offset-4">impactite</a>, my
-			own cookieless analytics. it gets the page path, the referrer and the browser, never the link or the
-			file. no sessions, no heatmaps
+			Page visits are counted with <a href={stats} class={link}>impactite</a>, without cookies. It sees the
+			page, referrer and browser, never the link or the file.
 		</p>
 	{/if}
-	<h2 class="pt-4 text-2xl">run your own</h2>
 	<p>
-		the <a href={SOURCE} class="underline underline-offset-4">source</a> is gpl-3.0 and every release is built and
-		signed in public ci, so anyone can check that the live site matches the source. if you dont wanna trust me,
-		run your own, its one binary
+		The <a href={SOURCE} class={link}>source</a> is GPL-3.0. Every release is built and signed in public, so you
+		can check the site matches it. Or run your own.
 	</p>
-	<p><a href="/" class="underline underline-offset-4">back</a></p>
+	<p><a href="/" class={link}>back</a></p>
 </main>

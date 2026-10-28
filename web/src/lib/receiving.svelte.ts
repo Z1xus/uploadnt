@@ -3,12 +3,13 @@ import { parseLink, type JsFile, type LobbyEvent, type ParsedLink, type Receiver
 import { openSink, sweep, type Sink } from './disk';
 import { grievanceOf, type Grievance } from './grievance';
 import { Lobby } from './lobby';
-import { Peer, type Path } from './peer';
+import { Peer, relayServers, type Path } from './peer';
 import { Rate } from './rate';
 
-type Phase = 'connecting' | 'offered' | 'receiving' | 'done' | 'failed';
+type Phase = 'connecting' | 'ask' | 'offered' | 'receiving' | 'done' | 'failed';
 
 const TICK_MS = 1000;
+const UNREACHABLE_MS = 20_000;
 
 export class Receiving {
 	phase = $state<Phase>('connecting');
@@ -28,12 +29,14 @@ export class Receiving {
 	private sink?: Sink;
 	private chunks = 0;
 	private met = false;
+	private relay = false;
 	private taking = false;
 	private finishing = false;
 	private committed?: Uint8Array;
 	private meter = new Rate();
 	private timer?: ReturnType<typeof setInterval>;
 	private alone_timer?: ReturnType<typeof setTimeout>;
+	private reach_timer?: ReturnType<typeof setTimeout>;
 
 	constructor(fragment: string) {
 		this.link = parseLink(fragment);
@@ -67,9 +70,25 @@ export class Receiving {
 		this.accept();
 	}
 
+	planb() {
+		this.relay = true;
+		this.phase = 'connecting';
+		this.reach_timer = setTimeout(() => this.unreachable(), UNREACHABLE_MS);
+		this.lobby?.reconnect();
+	}
+
+	private async unreachable() {
+		if (this.phase !== 'connecting') return;
+		const relay = !this.relay && (await relayServers());
+		if (this.phase !== 'connecting') return;
+		if (relay) this.phase = 'ask';
+		else this.fail('unreachable');
+	}
+
 	close() {
 		clearInterval(this.timer);
 		clearTimeout(this.alone_timer);
+		clearTimeout(this.reach_timer);
 		this.lobby?.close();
 		this.attempt?.close();
 		if (this.phase !== 'done') this.sink?.abort();
@@ -117,14 +136,17 @@ export class Receiving {
 		this.met = true;
 		this.alone = false;
 		clearTimeout(this.alone_timer);
+		this.reach_timer ??= setTimeout(() => this.unreachable(), UNREACHABLE_MS);
 		const old = this.attempt;
 		this.attempt = undefined;
 		old?.close();
 		this.session = undefined;
-		const peer = new Peer(false);
-		const attempt = new Attempt(this.link!.secret, false, this.lobby!, peer);
+		const peer = new Peer(false, this.relay);
+		const attempt = new Attempt(this.link!.secret, false, this.lobby!, peer, this.relay);
 		this.attempt = attempt;
 		peer.onopen = async () => {
+			clearTimeout(this.reach_timer);
+			this.reach_timer = undefined;
 			this.session = attempt.keys!.receiver();
 			// phones with 2 GB or less cannot hold 32 chunks in flight
 			if ('deviceMemory' in navigator && (navigator.deviceMemory as number) <= 2)

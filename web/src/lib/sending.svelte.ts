@@ -149,11 +149,7 @@ export class Sending {
 		old?.close();
 		this.session = undefined;
 		this.reads = [];
-		let peer = this.spare;
-		if (peer.stale) {
-			peer.close();
-			peer = this.prewarm();
-		}
+		const peer = this.spare;
 		this.spare = this.prewarm();
 		const attempt = new Attempt(this.secret, true, this.lobby!, peer);
 		this.attempt = attempt;

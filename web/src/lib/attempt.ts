@@ -6,32 +6,50 @@ export class Attempt {
 	keys?: Keys;
 	private pake: Pake;
 	private queue: Signal[] = [];
+	// the sender holds its offer until the receiver says whether it agreed to plan b
+	private ready: boolean;
 
 	constructor(
 		secret: string,
-		sender: boolean,
+		private sender: boolean,
 		private lobby: Lobby,
-		readonly peer: Peer
+		readonly peer: Peer,
+		relay = false
 	) {
 		this.pake = new Pake(secret, sender);
+		this.ready = !sender;
+		if (!sender) this.queue.push({ relay });
 		lobby.send(this.pake.message());
-		peer.onsignal = (signal) => (this.keys ? this.seal(signal) : this.queue.push(signal));
+		peer.onsignal = (signal) => (this.keys && this.ready ? this.seal(signal) : this.queue.push(signal));
 	}
 
 	onPake(data: Uint8Array) {
 		this.keys = this.pake.finish(data);
-		this.queue.splice(0).forEach((signal) => this.seal(signal));
+		if (this.ready) this.flush();
 	}
 
 	async onSealed(data: Uint8Array) {
 		if (!this.keys) return;
-		await this.peer.signal(JSON.parse(this.keys.open(data)));
+		const signal: Signal = JSON.parse(this.keys.open(data));
+		if (!('relay' in signal)) return await this.peer.signal(signal);
+		if (!this.sender || this.ready) return;
+		if (signal.relay) {
+			const direct = this.queue;
+			this.queue = [];
+			if (!(await this.peer.relay())) this.queue = direct;
+		}
+		this.ready = true;
+		this.flush();
 	}
 
 	close() {
 		this.peer.close();
 		this.pake.free();
 		this.keys?.free();
+	}
+
+	private flush() {
+		this.queue.splice(0).forEach((signal) => this.seal(signal));
 	}
 
 	private seal(signal: Signal) {

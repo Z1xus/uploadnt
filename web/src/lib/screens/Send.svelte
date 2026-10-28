@@ -37,11 +37,11 @@
 			</ul>
 		</div>
 		<p class="relative mt-14 inline-block text-3xl">
-			keep this tab open
+			Keep this tab open
 			<Mark kind="underline" seed={seed + 5} delay={300} class="inset-x-0 -bottom-2 h-2 w-full" />
 		</p>
 		{#if s.hashed < s.total}
-			<Margin><p>reading {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
+			<Margin><p>Preparing… {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
 		{/if}
 	{:else if s.phase === 'sending'}
 		<Digit value={s.bytes / Math.max(s.total, 1)} />

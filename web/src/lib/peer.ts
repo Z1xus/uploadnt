@@ -4,21 +4,24 @@ const LOW = 1 << 20;
 
 export type Path = 'direct' | 'relayed' | 'tcp';
 
-export type Signal = { sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
+export type Signal =
+	{ sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { relay: boolean };
 
 // the worker mints turn credentials for 12 hours; fetch fresh ones well before that
 const ICE_MAX_AGE_MS = 3600_000;
 
-let servers: Promise<RTCIceServer[]> | undefined;
+const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
+
+let servers: Promise<RTCIceServer[] | undefined> | undefined;
 let fetched = 0;
 
-function iceServers() {
+export function relayServers() {
 	if (!servers || performance.now() - fetched > ICE_MAX_AGE_MS) {
 		fetched = performance.now();
 		servers = fetch('/turn/credentials')
 			.then((r) => (r.ok ? r.json() : Promise.reject()))
 			.then((r: { iceServers: RTCIceServer[] }) => r.iceServers)
-			.catch(() => [{ urls: 'stun:stun.cloudflare.com:3478' }]);
+			.catch(() => undefined);
 	}
 	return servers;
 }
@@ -37,13 +40,11 @@ export class Peer {
 	private sink?: (signal: Signal) => void;
 	private dead = false;
 	private started?: Promise<void>;
-	private born = performance.now();
 
-	constructor(private offerer: boolean) {}
-
-	get stale() {
-		return performance.now() - this.born > ICE_MAX_AGE_MS;
-	}
+	constructor(
+		private offerer: boolean,
+		private relayed = false
+	) {}
 
 	set onsignal(sink: (signal: Signal) => void) {
 		this.sink = sink;
@@ -60,7 +61,7 @@ export class Peer {
 	}
 
 	private async init() {
-		const ice = await iceServers();
+		const ice = (this.relayed && (await relayServers())) || STUN;
 		if (this.dead) return;
 		const pc = new RTCPeerConnection({ iceServers: ice });
 		this.pc = pc;
@@ -84,19 +85,32 @@ export class Peer {
 		}
 	}
 
-	async signal(msg: Signal) {
+	async relay() {
+		await this.start();
+		const ice = await relayServers();
+		const pc = this.pc;
+		if (!pc || !ice || this.dead) return false;
+		pc.setConfiguration({ iceServers: ice });
+		pc.restartIce();
+		await pc.setLocalDescription();
+		this.emit({ sdp: pc.localDescription!.toJSON() });
+		return true;
+	}
+
+	async signal(msg: Exclude<Signal, { relay: boolean }>) {
 		await this.start();
 		const pc = this.pc;
 		if (!pc || this.dead) return;
 		if ('sdp' in msg) {
 			await pc.setRemoteDescription(msg.sdp);
-			for (const c of this.pending.splice(0)) await pc.addIceCandidate(c);
+			for (const c of this.pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
 			if (msg.sdp.type === 'offer') {
 				await pc.setLocalDescription();
 				this.emit({ sdp: pc.localDescription!.toJSON() });
 			}
 		} else if (pc.remoteDescription) {
-			await pc.addIceCandidate(msg.candidate);
+			// candidates from before an ice restart no longer match and can be dropped
+			await pc.addIceCandidate(msg.candidate).catch(() => {});
 		} else {
 			this.pending.push(msg.candidate);
 		}

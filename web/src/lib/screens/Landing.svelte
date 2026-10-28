@@ -52,11 +52,11 @@
 			: 'border-ink'}"
 	>
 		<p class="mb-8 text-xl">
-			{#if over}let go.{:else if previous}pick <span class="normal-case"
+			{#if over}Drop to send.{:else if previous}Choose <span class="normal-case"
 					>{previous.files.map((f) => f.name).join(', ')}</span
-				> again. the link still works.{:else}<span class="pointer-coarse:hidden"
-					>drop a file anywhere on this page.</span
-				><span class="hidden pointer-coarse:inline">pick a file.</span>{/if}
+				> again to keep the same link.{:else}<span class="pointer-coarse:hidden"
+					>Drop a file anywhere, or choose one.</span
+				><span class="hidden pointer-coarse:inline">Choose a file.</span>{/if}
 		</p>
 		<Stamp onclick={() => input.click()}>give it away</Stamp>
 		<input
@@ -68,12 +68,11 @@
 		/>
 
 		<Margin>
-			<p>drop a file, send the link to the other person yourself</p>
-			<p>both of you keep the tab open until its done. nothing sits on a server</p>
-			<p>speed is whatever your two connections can do</p>
-			<p>on a phone, keep the screen on</p>
+			<p>Files go straight to the other person. Nothing is stored.</p>
+			<p>Both of you keep the tab open until it finishes.</p>
+			<p>On a phone, keep the screen on.</p>
 			{#if planb !== undefined}
-				<p>in the last 30 days, {planb}% of transfers needed plan b</p>
+				<p>{planb}% of transfers used plan b in the last 30 days.</p>
 			{/if}
 		</Margin>
 	</div>
