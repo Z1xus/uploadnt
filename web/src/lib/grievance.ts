@@ -4,6 +4,7 @@ export const grievances = {
 	mismatch: "this link doesn't match. ask for it again.",
 	version: "you're on different versions. both of you reload the page.",
 	unreachable: "couldn't connect. try a different network.",
+	webrtc: 'your browser blocks direct connections. allow webrtc in its settings, or try another browser.',
 	left: 'the other person stopped the transfer.',
 	room: 'not enough storage in this browser. try chrome on a computer.',
 	tab: 'this file is open in another tab. close that tab and try again.',

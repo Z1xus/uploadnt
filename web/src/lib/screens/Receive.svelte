@@ -19,6 +19,11 @@
 {:else if r.phase === 'ask'}
 	<p class="text-3xl">can't connect directly</p>
 	<p class="mt-3 text-xl text-muted">this will transfer encrypted bytes over our relay.</p>
+	{#if r.blocked}
+		<p class="mt-3 text-muted">
+			your browser blocks direct connections. allowing webrtc in its settings fixes this.
+		</p>
+	{/if}
 	<div class="mt-10"><Button onclick={() => r.planb()}>use plan b</Button></div>
 {:else if r.phase === 'offered'}
 	<ul class="space-y-1 text-3xl">

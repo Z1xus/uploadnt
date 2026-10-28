@@ -2,7 +2,7 @@ const CHANNELS = 4;
 const HIGH = 4 << 20;
 const LOW = 1 << 20;
 
-export type Path = 'direct' | 'relayed' | 'tcp';
+export type Path = 'direct' | 'relayed' | 'tcp' | 'blocked';
 
 export type Signal =
 	{ sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { relay: boolean };
@@ -176,8 +176,14 @@ export class Peer {
 		};
 	}
 
+	// even a network that blocks udp yields host udp candidates, only a browser policy removes them
+	async blocked() {
+		return !(await this.report())?.local.some((c) => c.type === 'host' && c.protocol === 'udp');
+	}
+
 	async path(): Promise<Path> {
 		const pair = (await this.report())?.pair;
+		if (pair?.local.type === 'relay' && (await this.blocked())) return 'blocked';
 		if (pair?.local.type === 'relay' && pair.local.protocol !== 'udp') return 'tcp';
 		if (pair?.local.type === 'relay' || pair?.remote.type === 'relay') return 'relayed';
 		return 'direct';

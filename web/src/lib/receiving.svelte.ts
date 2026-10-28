@@ -21,6 +21,7 @@ export class Receiving {
 	rate = $state(0);
 	path = $state<Path>('direct');
 	alone = $state(false);
+	blocked = $state(false);
 	where = $state('');
 	grievance = $state<Grievance>();
 	error = $state<string>();
@@ -90,10 +91,11 @@ export class Receiving {
 		this.reach_timer = undefined;
 		const waiting = () => !this.open && this.phase !== 'done' && this.phase !== 'failed';
 		if (!waiting()) return;
+		this.blocked = !!(await this.attempt?.peer.blocked());
 		const relay = !this.relay && (await relayServers(this.lobby!.turn));
 		if (!waiting()) return;
 		if (relay) this.phase = 'ask';
-		else this.fail('unreachable');
+		else this.fail(this.blocked ? 'webrtc' : 'unreachable');
 	}
 
 	get peer() {
