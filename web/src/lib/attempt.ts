@@ -36,7 +36,7 @@ export class Attempt {
 		if (signal.relay) {
 			const direct = this.queue;
 			this.queue = [];
-			if (!(await this.peer.relay())) this.queue = direct;
+			if (!(await this.peer.relay(this.lobby.turn))) this.queue = direct;
 		}
 		this.ready = true;
 		this.flush();

@@ -65,6 +65,7 @@ export class Sending {
 	private reading = false;
 	private meter = new Rate();
 	private lock?: WakeLockSentinel;
+	private closed = false;
 
 	constructor(
 		readonly files: File[],
@@ -74,12 +75,13 @@ export class Sending {
 		const same = JSON.stringify(previous?.files) === JSON.stringify(describe(files));
 		// a reused link must carry the same bytes, so wait for the root before joining
 		const check = same ? previous!.root : undefined;
-		this.secret = same ? previous!.secret : (again ?? newSecret());
+		this.secret = check ? previous!.secret : (again ?? newSecret());
 		this.link = `${location.origin}/#${this.secret}`;
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();
 		record(() => ({ secret: this.secret, files: describe(files), root: check, at: Date.now() }));
 		this.manifest.then((builder) => {
+			if (this.closed) return;
 			const root = builder.root();
 			if (check && root !== check) {
 				this.secret = newSecret();
@@ -92,7 +94,7 @@ export class Sending {
 	}
 
 	private join() {
-		if (this.phase === 'failed') return;
+		if (this.closed) return;
 		this.lobby = new Lobby(Lobby.url(parseLink(this.secret)!.mailbox), (e) => this.onLobby(e));
 	}
 
@@ -108,6 +110,7 @@ export class Sending {
 	}
 
 	close() {
+		this.closed = true;
 		this.lobby?.close();
 		this.attempt?.close();
 		this.lock?.release();
@@ -188,35 +191,36 @@ export class Sending {
 	}
 
 	private events() {
-		for (const e of this.session!.events()) {
-			switch (e.type) {
-				case 'read':
-					this.reads.push(e);
-					break;
-				case 'progress':
-					if (this.phase === 'waiting') this.begin();
-					this.bytes = e.bytes;
-					this.rate = this.meter.push(e.bytes);
-					document.title = `${percent(e.bytes, e.total)}% uploadn't`;
-					break;
-				case 'done':
-					this.phase = 'done';
-					this.bytes = this.total;
-					document.title = "uploadn't";
-					this.forget();
-					this.close();
-					break;
-				case 'closed':
-					this.fail(new Error('left'));
+		for (let batch = this.session!.events(); batch.length; batch = this.session!.events())
+			for (const e of batch) {
+				switch (e.type) {
+					case 'read':
+						this.reads.push(e);
+						break;
+					case 'progress':
+						if (this.phase === 'waiting') this.begin();
+						this.bytes = e.bytes;
+						this.rate = this.meter.push(e.bytes);
+						document.title = `${percent(e.bytes, e.total)}% uploadn't`;
+						break;
+					case 'done':
+						this.phase = 'done';
+						this.bytes = this.total;
+						document.title = "uploadn't";
+						this.forget();
+						this.close();
+						break;
+					case 'closed':
+						this.fail(new Error('left'));
+				}
 			}
-		}
 		this.read();
 		this.flush();
 	}
 
 	private begin() {
 		this.phase = 'sending';
-		navigator.sendBeacon('/stats', this.path === 'direct' ? 'direct' : 'planb');
+		this.lobby?.report(this.path === 'direct' ? 'direct' : 'planb');
 		navigator.wakeLock
 			?.request('screen')
 			.then((lock) => (this.lock = lock))

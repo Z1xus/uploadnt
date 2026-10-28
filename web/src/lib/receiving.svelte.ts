@@ -81,7 +81,7 @@ export class Receiving {
 
 	private async unreachable() {
 		if (this.phase !== 'connecting') return;
-		const relay = !this.relay && (await relayServers());
+		const relay = !this.relay && (await relayServers(this.lobby!.turn));
 		if (this.phase !== 'connecting') return;
 		if (relay) this.phase = 'ask';
 		else this.fail('unreachable');
@@ -145,7 +145,7 @@ export class Receiving {
 		this.attempt = undefined;
 		old?.close();
 		this.session = undefined;
-		const peer = new Peer(false, this.relay);
+		const peer = new Peer(false, this.relay ? this.lobby!.turn : undefined);
 		const attempt = new Attempt(this.link!.secret, false, this.lobby!, peer, this.relay);
 		this.attempt = attempt;
 		peer.onopen = async () => {
@@ -180,40 +180,41 @@ export class Receiving {
 
 	private events() {
 		const session = this.session!;
-		for (const e of session.events()) {
-			switch (e.type) {
-				case 'manifest':
-					this.files = e.files;
-					this.size = e.size;
-					this.chunks = e.chunks;
-					if (this.committed) session.accept(this.committed, performance.now());
-					else if (this.finishing) break;
-					else if (this.sink) this.accept();
-					else this.phase = 'offered';
-					break;
-				case 'write':
-					this.sink!.write(e.file, e.offset, e.chunk, e.data).then(
-						() => {
-							if (session !== this.session) return;
-							session.written(e.chunk, performance.now());
-							this.events();
-						},
-						(err) => this.fail(grievanceOf(err))
-					);
-					break;
-				case 'progress':
-					this.bytes = e.bytes;
-					this.rate = this.meter.push(e.bytes);
-					document.title = `${percent(e.bytes, e.total)}% uploadn't`;
-					break;
-				case 'done':
-					if (this.committed) session.complete();
-					else this.finish();
-					break;
-				case 'closed':
-					this.fail('left');
+		for (let batch = session.events(); batch.length; batch = session.events())
+			for (const e of batch) {
+				switch (e.type) {
+					case 'manifest':
+						this.files = e.files;
+						this.size = e.size;
+						this.chunks = e.chunks;
+						if (this.committed) session.accept(this.committed, performance.now());
+						else if (this.finishing) break;
+						else if (this.sink) this.accept();
+						else this.phase = 'offered';
+						break;
+					case 'write':
+						this.sink!.write(e.file, e.offset, e.chunk, e.data).then(
+							() => {
+								if (session !== this.session) return;
+								session.written(e.chunk, performance.now());
+								this.events();
+							},
+							(err) => this.fail(grievanceOf(err))
+						);
+						break;
+					case 'progress':
+						this.bytes = e.bytes;
+						this.rate = this.meter.push(e.bytes);
+						document.title = `${percent(e.bytes, e.total)}% uploadn't`;
+						break;
+					case 'done':
+						if (this.committed) session.complete();
+						else this.finish();
+						break;
+					case 'closed':
+						this.fail('left');
+				}
 			}
-		}
 		this.flush();
 	}
 

@@ -17,6 +17,14 @@ export class Lobby {
 		return `${secure ? 'wss' : 'ws'}://${host || location.host}/m/${mailbox}`;
 	}
 
+	get turn() {
+		return `${this.url.replace(/^ws/, 'http')}/turn`;
+	}
+
+	report(path: string) {
+		if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(path);
+	}
+
 	send(bytes: Uint8Array) {
 		if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(bytes as Uint8Array<ArrayBuffer>);
 	}

@@ -5,6 +5,8 @@
 	import Landing from '#lib/screens/Landing.svelte';
 	import Receive from '#lib/screens/Receive.svelte';
 	import Send from '#lib/screens/Send.svelte';
+	import { beforeNavigate } from '$app/navigation';
+	import { onDestroy } from 'svelte';
 
 	const seed = Math.floor(Math.random() * 2 ** 31);
 	const fragment = location.hash.slice(1);
@@ -13,6 +15,16 @@
 	let receiving = $state<Receiving>();
 	let previous = $state<Pending>();
 	let again = $state<string>();
+	const busy = $derived(sending?.phase === 'sending' || receiving?.phase === 'receiving');
+
+	beforeNavigate(({ cancel }) => {
+		if (busy && !confirm('leave this page? the transfer stops.')) cancel();
+	});
+	onDestroy(() => {
+		sending?.close();
+		receiving?.close();
+	});
+
 	const ready = loadCore().then(async () => {
 		if (fragment) receiving = new Receiving(fragment);
 		else previous = await pending();

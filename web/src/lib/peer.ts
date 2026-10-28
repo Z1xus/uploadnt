@@ -11,18 +11,17 @@ const ICE_MAX_AGE_MS = 3600_000;
 
 const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
 
-let servers: Promise<RTCIceServer[] | undefined> | undefined;
-let fetched = 0;
+const servers = new Map<string, { at: number; ice: Promise<RTCIceServer[] | undefined> }>();
 
-export function relayServers() {
-	if (!servers || performance.now() - fetched > ICE_MAX_AGE_MS) {
-		fetched = performance.now();
-		servers = fetch('/turn/credentials')
-			.then((r) => (r.ok ? r.json() : Promise.reject()))
-			.then((r: { iceServers: RTCIceServer[] }) => r.iceServers)
-			.catch(() => undefined);
-	}
-	return servers;
+export function relayServers(url: string) {
+	const cached = servers.get(url);
+	if (cached && performance.now() - cached.at < ICE_MAX_AGE_MS) return cached.ice;
+	const ice = fetch(url)
+		.then((r) => (r.ok ? r.json() : Promise.reject()))
+		.then((r: { iceServers: RTCIceServer[] }) => r.iceServers)
+		.catch(() => void servers.delete(url));
+	servers.set(url, { at: performance.now(), ice });
+	return ice;
 }
 
 export class Peer {
@@ -43,7 +42,7 @@ export class Peer {
 
 	constructor(
 		private offerer: boolean,
-		private relayed = false
+		private turn?: string
 	) {}
 
 	set onmessage(reader: (msg: Uint8Array) => void) {
@@ -66,7 +65,7 @@ export class Peer {
 	}
 
 	private async init() {
-		const ice = (this.relayed && (await relayServers())) || STUN;
+		const ice = (this.turn && (await relayServers(this.turn))) || STUN;
 		if (this.dead) return;
 		const pc = new RTCPeerConnection({ iceServers: ice });
 		this.pc = pc;
@@ -94,9 +93,9 @@ export class Peer {
 		}
 	}
 
-	async relay() {
+	async relay(turn: string) {
 		await this.start();
-		const ice = await relayServers();
+		const ice = await relayServers(turn);
 		const pc = this.pc;
 		if (!pc || !ice || this.dead) return false;
 		pc.setConfiguration({ iceServers: ice });
