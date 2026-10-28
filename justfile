@@ -16,5 +16,5 @@ deploy: web
     bun deploy/provenance.ts web/build
     cd deploy && bunx wrangler deploy
 
-verify url="https://uploadnt.dev" repo="":
+verify url="https://uploadnt.com" repo="":
     bun deploy/verify.ts {{url}} {{repo}}

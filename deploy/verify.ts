@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const [site = 'https://uploadnt.dev', repo] = process.argv.slice(2);
+const [site = 'https://uploadnt.com', repo] = process.argv.slice(2);
 const sha = (data: ArrayBuffer | string) =>
 	createHash('sha256')
 		.update(typeof data === 'string' ? data : new Uint8Array(data))

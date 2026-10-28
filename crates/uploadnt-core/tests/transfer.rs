@@ -130,7 +130,7 @@ fn wrong_secret_cannot_read() {
 fn link_round_trip() {
     let secret = Secret::generate();
     assert_eq!(secret.encode().len(), 26);
-    let link = Link::parse(&format!("https://uploadnt.dev/#{}@lobby.example", secret.encode())).unwrap();
+    let link = Link::parse(&format!("https://uploadnt.com/#{}@lobby.example", secret.encode())).unwrap();
     assert!(link.secret == secret);
     assert_eq!(link.lobby.as_deref(), Some("lobby.example"));
     assert!(Link::parse(&format!("nope://{}", secret.encode())).unwrap().secret == secret);

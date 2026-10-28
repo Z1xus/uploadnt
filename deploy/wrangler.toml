@@ -1,6 +1,7 @@
 name = "uploadnt"
 main = "../crates/lobby/build/worker/shim.mjs"
 compatibility_date = "2026-10-01"
+routes = [{ pattern = "uploadnt.com", custom_domain = true }]
 
 [build]
 command = "cd ../crates/lobby && cargo install -q worker-build@^0.8 && worker-build --release"

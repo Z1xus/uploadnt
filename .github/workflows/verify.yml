@@ -20,7 +20,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bun deploy/verify.ts https://uploadnt.dev ${{ github.repository }} | tee result.json
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: bun deploy/verify.ts "${SITE_URL:-https://uploadnt.com}" ${{ github.repository }} | tee result.json
       - if: failure()
         env:
           GH_TOKEN: ${{ github.token }}

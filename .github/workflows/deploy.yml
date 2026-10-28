@@ -23,7 +23,11 @@ jobs:
       - run: cargo test --release --workspace
       - run: bun install --frozen-lockfile
       - run: just web
+        env:
+          PUBLIC_IMPACTITE: ${{ vars.IMPACTITE }}
       - run: bun deploy/provenance.ts web/build
+        env:
+          PUBLIC_IMPACTITE: ${{ vars.IMPACTITE }}
       - uses: actions/attest-build-provenance@v2
         if: github.event_name == 'push'
         with:

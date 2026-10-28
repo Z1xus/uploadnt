@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit({ adapter: adapter() })],
+	envPrefix: 'PUBLIC_',
 	server: {
 		fs: { allow: ['..'] },
 		proxy: { '/m': { target: 'ws://localhost:8787', ws: true }, '/stats': 'http://localhost:8787' }

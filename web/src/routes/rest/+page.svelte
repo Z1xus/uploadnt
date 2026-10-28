@@ -1,3 +1,8 @@
+<script lang="ts">
+	const SOURCE = 'https://github.com/Z1xus/uploadnt';
+	const stats = import.meta.env.PUBLIC_IMPACTITE;
+</script>
+
 <main class="mx-auto max-w-[58ch] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
 	<p>
 		the file goes from one browser straight to the other, encrypted with a key that only lives in the link.
@@ -15,6 +20,16 @@
 		a web page cannot prove itself. a server could lie to you and nobody else. the code is public and every
 		release is signed, so a swap shows up for everyone except the person it targets.
 	</p>
-	<p>run your own lobby: one binary, one port. the source has the details.</p>
+	<p>
+		privacy: the lobby and plan b see your ip address while you use them and write none of it down. the only
+		thing kept is a daily count of transfers that went direct and transfers that needed plan b.{#if stats}
+			page visits are counted with <a href={stats} class="underline underline-offset-4">impactite</a>, without
+			cookies. it gets the page, the referrer and your browser, never the link or the file. no recordings, no
+			heatmaps.{/if}
+	</p>
+	<p>
+		run your own: one binary, one port. the <a href={SOURCE} class="underline underline-offset-4">source</a> is
+		gpl-3.0.
+	</p>
 	<p><a href="/" class="underline underline-offset-4">back</a></p>
 </main>

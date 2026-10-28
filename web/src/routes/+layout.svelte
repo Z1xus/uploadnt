@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import type { Snippet } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -9,6 +10,21 @@
 		(!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
 
 	let isDark = $state(dark());
+
+	const stats = import.meta.env.PUBLIC_IMPACTITE;
+	afterNavigate(({ from }) => {
+		if (!stats) return;
+		// only the path, never location.href: the fragment holds the secret
+		const body = {
+			n: 'pageview',
+			d: location.hostname,
+			u: location.origin + location.pathname,
+			r: from ? null : document.referrer
+		};
+		fetch(`${stats}/api/event`, { method: 'POST', keepalive: true, body: JSON.stringify(body) }).catch(
+			() => {}
+		);
+	});
 
 	function toggle() {
 		const theme = isDark ? 'light' : 'dark';

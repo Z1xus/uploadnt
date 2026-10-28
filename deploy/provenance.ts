@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 
 const dir = process.argv[2] ?? 'web/build';
 const commit = process.env.GITHUB_SHA ?? 'local';
+const stats = process.env.PUBLIC_IMPACTITE ?? '';
 const digest = (algo: string, data: Buffer | string) => createHash(algo).update(data).digest('base64');
 
 const walk = (d: string): string[] =>
@@ -31,7 +32,7 @@ const csp = [
 	"default-src 'self'",
 	`script-src 'self' 'wasm-unsafe-eval' ${[...inline].join(' ')}`,
 	"style-src 'self' 'unsafe-inline'",
-	"connect-src 'self' wss: https://rtc.live.cloudflare.com",
+	`connect-src 'self' wss: https://rtc.live.cloudflare.com ${stats}`,
 	"img-src 'self' data: blob:",
 	"worker-src 'self'",
 	"base-uri 'none'",
