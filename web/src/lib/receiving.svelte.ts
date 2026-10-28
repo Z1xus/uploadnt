@@ -24,6 +24,7 @@ export class Receiving {
 	where = $state('');
 	grievance = $state<Grievance>();
 	error = $state<string>();
+	again = $state(false);
 
 	private link?: ParsedLink;
 	private lobby?: Lobby;
@@ -33,6 +34,7 @@ export class Receiving {
 	private chunks = 0;
 	private met = false;
 	private relay = false;
+	private open = false;
 	private taking = false;
 	private finishing = false;
 	private committed?: Uint8Array;
@@ -73,6 +75,10 @@ export class Receiving {
 		this.accept();
 	}
 
+	redownload() {
+		this.sink?.again?.().catch((err) => this.fail(err));
+	}
+
 	planb() {
 		this.relay = true;
 		this.phase = 'connecting';
@@ -81,9 +87,11 @@ export class Receiving {
 	}
 
 	private async unreachable() {
-		if (this.phase !== 'connecting') return;
+		this.reach_timer = undefined;
+		const waiting = () => !this.open && this.phase !== 'done' && this.phase !== 'failed';
+		if (!waiting()) return;
 		const relay = !this.relay && (await relayServers(this.lobby!.turn));
-		if (this.phase !== 'connecting') return;
+		if (!waiting()) return;
 		if (relay) this.phase = 'ask';
 		else this.fail('unreachable');
 	}
@@ -105,6 +113,7 @@ export class Receiving {
 			const have = await this.sink!.open(root, this.files, this.chunks);
 			if (session !== this.session) return;
 			session.accept(have, performance.now());
+			this.phase = 'receiving';
 			this.events();
 		} catch (err) {
 			this.fail(err);
@@ -141,7 +150,8 @@ export class Receiving {
 		this.met = true;
 		this.alone = false;
 		clearTimeout(this.alone_timer);
-		this.reach_timer ??= setTimeout(() => this.unreachable(), DIRECT_MS);
+		this.open = false;
+		this.reach_timer ??= setTimeout(() => this.unreachable(), this.relay ? RELAY_MS : DIRECT_MS);
 		const old = this.attempt;
 		this.attempt = undefined;
 		old?.close();
@@ -151,6 +161,7 @@ export class Receiving {
 		this.attempt = attempt;
 		peer.onopen = async () => {
 			try {
+				this.open = true;
 				clearTimeout(this.reach_timer);
 				this.reach_timer = undefined;
 				this.session = attempt.keys!.receiver();
@@ -235,15 +246,18 @@ export class Receiving {
 		else if (this.session?.root()) this.session.accept(have, performance.now());
 		if (this.session) this.events();
 		this.phase = 'done';
+		this.again = !!this.sink?.again;
 		document.title = "uploadn't";
+		const attempt = this.attempt;
 		// closing the connection throws away whatever is still queued, so we wait a second and pray
-		setTimeout(() => this.attempt?.close(), 1000);
+		setTimeout(() => attempt?.close(), 1000);
 	}
 
 	private reset() {
 		this.files = [];
 		this.size = this.bytes = this.rate = this.chunks = 0;
 		this.where = '';
+		this.again = false;
 		this.sink = undefined;
 		this.finishing = false;
 		this.committed = undefined;

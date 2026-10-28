@@ -83,16 +83,19 @@ export class Sending {
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();
 		record(() => ({ secret: this.secret, files: describe(files), root: check, at: Date.now() }));
-		this.manifest.then((builder) => {
-			if (this.closed) return;
-			const root = builder.root();
-			if (check && root !== check) {
-				this.secret = newSecret();
-				this.link = `${location.origin}/#${this.secret}`;
-			}
-			record(() => ({ secret: this.secret, files: describe(files), root, at: Date.now() }));
-			if (check) this.join();
-		});
+		this.manifest.then(
+			(builder) => {
+				if (this.closed) return;
+				const root = builder.root();
+				if (check && root !== check) {
+					this.secret = newSecret();
+					this.link = `${location.origin}/#${this.secret}`;
+				}
+				record(() => ({ secret: this.secret, files: describe(files), root, at: Date.now() }));
+				if (check) this.join();
+			},
+			(err) => this.fail(err)
+		);
 		if (!check) this.join();
 	}
 
@@ -116,6 +119,7 @@ export class Sending {
 		this.closed = true;
 		this.lobby?.close();
 		this.attempt?.close();
+		this.spare.close();
 		this.lock?.release();
 	}
 
@@ -131,6 +135,7 @@ export class Sending {
 		);
 		let hashed = 0;
 		for (let span = builder.next(); span; span = builder.next()) {
+			if (this.closed) throw new Error('cancelled');
 			const file = this.files[span.file];
 			builder.push(new Uint8Array(await file.slice(span.offset, span.offset + span.len).arrayBuffer()));
 			hashed += span.len;
@@ -219,7 +224,7 @@ export class Sending {
 						this.fail(new Error('left'));
 				}
 			}
-		this.read();
+		this.read().catch((err) => this.fail(err));
 		this.flush();
 	}
 
@@ -256,6 +261,7 @@ export class Sending {
 	}
 
 	private fail(err: unknown) {
+		if (this.closed) return;
 		this.grievance = grievanceOf(err);
 		this.error = String(err);
 		this.phase = 'failed';

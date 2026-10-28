@@ -7,20 +7,25 @@ export interface Sink {
 	write(file: number, offset: number, chunk: number, data: Uint8Array): Promise<void>;
 	finish(): Promise<void>;
 	abort(): void;
+	again?: () => Promise<void>;
 }
 
 type Target = FileSystemFileHandle | FileSystemDirectoryHandle | undefined;
 
 const flat = (name: string) => name.replaceAll('/', '_');
 
+function numbered(name: string, n: number) {
+	if (n === 1) return name;
+	const dot = name.lastIndexOf('.') > 0 ? name.lastIndexOf('.') : name.length;
+	return `${name.slice(0, dot)} (${n})${name.slice(dot)}`;
+}
+
 function unique(files: JsFile[]) {
 	const used = new Set<string>();
+	const key = (s: string) => s.normalize('NFC').toLowerCase();
 	return files.map((f) => {
-		const name = flat(f.name);
-		const dot = name.lastIndexOf('.') > 0 ? name.lastIndexOf('.') : name.length;
-		const key = (s: string) => s.normalize('NFC').toLowerCase();
-		let out = name;
-		for (let n = 2; used.has(key(out)); n++) out = `${name.slice(0, dot)} (${n})${name.slice(dot)}`;
+		let out = flat(f.name);
+		for (let n = 2; used.has(key(out)); n++) out = numbered(flat(f.name), n);
 		used.add(key(out));
 		return out;
 	});
@@ -37,7 +42,15 @@ async function pick(files: JsFile[]): Promise<Target> {
 }
 
 async function handleFor(target: Target, name: string) {
-	return target?.kind === 'directory' ? target.getFileHandle(name, { create: true }) : target!;
+	if (target?.kind !== 'directory') return target!;
+	for (let n = 1; ; n++) {
+		const out = numbered(name, n);
+		const taken = await target.getFileHandle(out).then(
+			() => true,
+			() => false
+		);
+		if (!taken) return target.getFileHandle(out, { create: true });
+	}
 }
 
 const KEEP_MS = 24 * 3600_000;
@@ -51,13 +64,11 @@ export async function sweep() {
 	if (!root) return;
 	for await (const [name, entry] of root.entries()) {
 		if (entry.kind !== 'directory') continue;
-		const delivered = await entry
-			.getFileHandle('delivered')
-			.then((h) => h.getFile())
-			.catch(() => undefined);
-		// a blocked or cancelled download can still be retried from the link for a day
-		if (delivered && Date.now() - delivered.lastModified > KEEP_MS)
-			await root.removeEntry(name, { recursive: true }).catch(() => {});
+		const touched = async (file: string) =>
+			(await entry.getFileHandle(file).then((h) => h.getFile())).lastModified;
+		const last = await touched('delivered').catch(() => touched('have').catch(() => 0));
+		// a tab still writing holds a lock, so its removal fails and it stays
+		if (Date.now() - last > KEEP_MS) await root.removeEntry(name, { recursive: true }).catch(() => {});
 	}
 }
 
@@ -72,6 +83,7 @@ class Staged implements Sink {
 		private target: Target,
 		readonly where: string
 	) {
+		if (!target) this.again = () => this.deliver();
 		this.worker.onmessage = ({ data }) => {
 			const call = this.calls.get(data.id)!;
 			this.calls.delete(data.id);
@@ -98,9 +110,15 @@ class Staged implements Sink {
 		return this.call<void>({ op: 'write', file, offset, chunk, data }, [data.buffer]);
 	}
 
+	again?: () => Promise<void>;
+
 	async finish() {
 		await this.call({ op: 'finish' });
 		this.worker.terminate();
+		await this.deliver();
+	}
+
+	private async deliver() {
 		const root = await staging();
 		const dir = await root.getDirectoryHandle(this.root);
 		for (const [i, name] of this.names.entries()) {

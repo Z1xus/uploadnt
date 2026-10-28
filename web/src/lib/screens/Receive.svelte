@@ -36,6 +36,11 @@
 	</p>
 	<p class="mt-6 text-xl">received.</p>
 	<p class="mt-3 text-muted">keep this tab open to get more files.</p>
+	{#if r.again}
+		<button class="mt-10 block text-muted hover:underline" onclick={() => r.redownload()}
+			>download again</button
+		>
+	{/if}
 {:else}
 	<Failure grievance={r.grievance} error={r.error} />
 	{#if r.grievance !== 'link' && r.grievance !== 'full'}
