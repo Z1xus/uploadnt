@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Manifest;
+use crate::FileEntry;
 
 pub const VERSION: u16 = 1;
 
@@ -9,7 +9,11 @@ pub enum Frame {
     Hello {
         version: u16,
     },
-    Manifest(Manifest),
+    Files(Vec<FileEntry>),
+    Hashes {
+        start: u32,
+        hashes: Vec<[u8; 32]>,
+    },
     Have(#[serde(with = "serde_bytes")] Vec<u8>),
     Want(Vec<u32>),
     Piece {

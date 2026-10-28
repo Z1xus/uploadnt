@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::{Bitmap, Channel, Error, Frame, Manifest, PIECE, VERSION, hash_chunk};
+use crate::{Bitmap, Channel, Error, FileEntry, Frame, Manifest, PIECE, VERSION, hash_chunk};
 
 const MIN_WINDOW: usize = 4;
 const MAX_WINDOW: usize = 32;
 const STALL_MS: u64 = 10_000;
+// keeps a hashes frame under the 64 KiB data channel message limit
+const HASHES_PER_FRAME: usize = 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
@@ -59,7 +61,10 @@ pub struct Sender {
 impl Sender {
     pub fn new(channel: Channel, manifest: Manifest) -> Self {
         let mut link = Link::new(channel);
-        link.send(&Frame::Manifest(manifest.clone()));
+        link.send(&Frame::Files(manifest.files.clone()));
+        for (i, hashes) in manifest.hashes.chunks(HASHES_PER_FRAME).enumerate() {
+            link.send(&Frame::Hashes { start: (i * HASHES_PER_FRAME) as u32, hashes: hashes.to_vec() });
+        }
         Self { link, root: manifest.root(), acked: Bitmap::new(manifest.chunks()), manifest, reading: HashSet::new() }
     }
 
@@ -121,6 +126,8 @@ struct Partial {
 
 pub struct Receiver {
     link: Link,
+    files: Option<Vec<FileEntry>>,
+    parts: Vec<(u32, Vec<[u8; 32]>)>,
     manifest: Option<Manifest>,
     have: Bitmap,
     inflight: HashMap<u32, Partial>,
@@ -135,6 +142,8 @@ impl Receiver {
     pub fn new(channel: Channel) -> Self {
         Self {
             link: Link::new(channel),
+            files: None,
+            parts: Vec::new(),
             manifest: None,
             have: Bitmap::new(0),
             inflight: HashMap::new(),
@@ -157,10 +166,15 @@ impl Receiver {
     pub fn handle(&mut self, msg: &[u8], now: u64) -> Result<(), Error> {
         match self.link.open(msg)? {
             Frame::Hello { version } => check_version(version)?,
-            Frame::Manifest(manifest) if self.manifest.is_none() && manifest.is_valid() => {
-                self.have = Bitmap::new(manifest.chunks());
-                self.link.events.push_back(Event::Manifest { manifest: manifest.clone() });
-                self.manifest = Some(manifest);
+            Frame::Files(files) if self.files.is_none() => {
+                self.files = Some(files);
+                self.assemble()?;
+            }
+            Frame::Hashes { start, hashes } if self.manifest.is_none() => {
+                if !self.parts.iter().any(|(s, _)| *s == start) {
+                    self.parts.push((start, hashes));
+                }
+                self.assemble()?;
             }
             Frame::Piece { chunk, offset, data } => self.piece(chunk, offset, &data, now)?,
             Frame::Bye(reason) => self.link.events.push_back(Event::Closed { reason }),
@@ -212,6 +226,31 @@ impl Receiver {
 
     pub fn poll_event(&mut self) -> Option<Event> {
         self.link.events.pop_front()
+    }
+
+    fn assemble(&mut self) -> Result<(), Error> {
+        let Some(files) = &self.files else { return Ok(()) };
+        let total = files.iter().map(FileEntry::chunks).sum::<u32>() as usize;
+        let got: usize = self.parts.iter().map(|(_, h)| h.len()).sum();
+        if got > total {
+            return Err(Error::Protocol);
+        }
+        if got < total {
+            return Ok(());
+        }
+        self.parts.sort_by_key(|(start, _)| *start);
+        let mut hashes = Vec::with_capacity(total);
+        for (start, part) in self.parts.drain(..) {
+            if start as usize != hashes.len() {
+                return Err(Error::Protocol);
+            }
+            hashes.extend(part);
+        }
+        let manifest = Manifest { files: self.files.take().unwrap(), hashes };
+        self.have = Bitmap::new(manifest.chunks());
+        self.link.events.push_back(Event::Manifest { manifest: manifest.clone() });
+        self.manifest = Some(manifest);
+        Ok(())
     }
 
     fn piece(&mut self, chunk: u32, offset: u32, data: &[u8], now: u64) -> Result<(), Error> {
