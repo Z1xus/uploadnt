@@ -3,9 +3,11 @@
 	import Scrawl from '../ui/Scrawl.svelte';
 	import Stamp from '../ui/Stamp.svelte';
 	import Struck from '../ui/Struck.svelte';
+	import type { Pending } from '../sending.svelte';
 	import { tilted } from '../ui/tilt';
 
-	let { seed, onfiles }: { seed: number; onfiles: (files: File[]) => void } = $props();
+	let { seed, previous, onfiles }: { seed: number; previous?: Pending; onfiles: (files: File[]) => void } =
+		$props();
 
 	let input: HTMLInputElement;
 	let over = $state(false);
@@ -43,7 +45,10 @@
 		use:tilted={seed + 3}
 	>
 		<p class="mb-8 text-xl">
-			{#if over}let go.{:else}<span class="pointer-coarse:hidden">drop a file anywhere on this page.</span
+			{#if over}let go.{:else if previous}pick <span class="normal-case"
+					>{previous.files.map((f) => f.name).join(', ')}</span
+				> again. the link still works.{:else}<span class="pointer-coarse:hidden"
+					>drop a file anywhere on this page.</span
 				><span class="hidden pointer-coarse:inline">pick a file.</span>{/if}
 		</p>
 		<Stamp onclick={() => input.click()}>give it away</Stamp>

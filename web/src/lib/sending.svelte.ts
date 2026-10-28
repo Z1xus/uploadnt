@@ -14,6 +14,34 @@ import { Rate } from './rate';
 
 type Phase = 'waiting' | 'sending' | 'done' | 'failed';
 
+export type Pending = { secret: string; files: { name: string; size: number }[]; at: number };
+
+const PENDING = 'sending.json';
+const PENDING_MAX_AGE_MS = 24 * 3600_000;
+
+const describe = (files: File[]) =>
+	files.map((f) => ({ name: f.webkitRelativePath || f.name, size: f.size }));
+
+export async function pending(): Promise<Pending | undefined> {
+	try {
+		const dir = await navigator.storage.getDirectory();
+		const p: Pending = JSON.parse(await (await (await dir.getFileHandle(PENDING)).getFile()).text());
+		return Date.now() - p.at < PENDING_MAX_AGE_MS ? p : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+async function remember(p?: Pending) {
+	try {
+		const dir = await navigator.storage.getDirectory();
+		if (!p) return await dir.removeEntry(PENDING);
+		const out = await (await dir.getFileHandle(PENDING, { create: true })).createWritable();
+		await out.write(JSON.stringify(p));
+		await out.close();
+	} catch {}
+}
+
 export class Sending {
 	phase = $state<Phase>('waiting');
 	hashed = $state(0);
@@ -24,7 +52,7 @@ export class Sending {
 	readonly link: string;
 	readonly total: number;
 
-	private secret = newSecret();
+	private secret: string;
 	private lobby: Lobby;
 	private manifest: Promise<ManifestBuilder>;
 	private attempt?: Attempt;
@@ -35,7 +63,13 @@ export class Sending {
 	private meter = new Rate();
 	private lock?: WakeLockSentinel;
 
-	constructor(readonly files: File[]) {
+	constructor(
+		readonly files: File[],
+		previous?: Pending
+	) {
+		const same = JSON.stringify(previous?.files) === JSON.stringify(describe(files));
+		this.secret = same ? previous!.secret : newSecret();
+		remember({ secret: this.secret, files: describe(files), at: Date.now() });
 		this.link = `${location.origin}/#${this.secret}`;
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();
@@ -134,6 +168,7 @@ export class Sending {
 					this.phase = 'done';
 					this.bytes = this.total;
 					document.title = "uploadn't";
+					remember();
 					this.close();
 					break;
 				case 'closed':

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { loadCore } from '#lib/core.ts';
 	import { Receiving } from '#lib/receiving.svelte.ts';
-	import { Sending } from '#lib/sending.svelte.ts';
+	import { Sending, pending, type Pending } from '#lib/sending.svelte.ts';
 	import Landing from '#lib/screens/Landing.svelte';
 	import Receive from '#lib/screens/Receive.svelte';
 	import Send from '#lib/screens/Send.svelte';
@@ -11,7 +11,11 @@
 
 	let sending = $state<Sending>();
 	let receiving = $state<Receiving>();
-	const ready = loadCore().then(() => fragment && (receiving = new Receiving(fragment)));
+	let previous = $state<Pending>();
+	const ready = loadCore().then(async () => {
+		if (fragment) receiving = new Receiving(fragment);
+		else previous = await pending();
+	});
 </script>
 
 <svelte:window onhashchange={() => location.reload()} />
@@ -22,6 +26,6 @@
 	{:else if sending}
 		<Send s={sending} />
 	{:else}
-		<Landing {seed} onfiles={(files: File[]) => (sending = new Sending(files))} />
+		<Landing {seed} {previous} onfiles={(files: File[]) => (sending = new Sending(files, previous))} />
 	{/if}
 {/await}
