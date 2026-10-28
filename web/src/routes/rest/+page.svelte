@@ -194,7 +194,7 @@
 		the <a href={SOURCE} class={link}>source</a> is gpl-3.0. every release is built and signed in public, so you
 		can check that this site matches it, or run your own copy.
 	</p>
-	<details>
+	<details open={nerd.some((n) => location.hash === `#${n.title.replaceAll(' ', '-')}`)}>
 		<summary
 			class="badge cursor-pointer list-none hover:bg-accent hover:text-background [&::-webkit-details-marker]:hidden"
 			>i'm a nerd</summary
