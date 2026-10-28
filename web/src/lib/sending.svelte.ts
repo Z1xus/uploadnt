@@ -52,6 +52,7 @@ export class Sending {
 	rate = $state(0);
 	path = $state<Path>('direct');
 	grievance = $state<Grievance>();
+	error = $state<string>();
 	link = $state('');
 	readonly total: number;
 	readonly more: boolean;
@@ -255,8 +256,8 @@ export class Sending {
 	}
 
 	private fail(err: unknown) {
-		const msg = String((err as Error)?.message ?? err);
-		this.grievance = msg === 'left' ? 'left' : grievanceOf(err);
+		this.grievance = grievanceOf(err);
+		this.error = String(err);
 		this.phase = 'failed';
 		this.close();
 	}

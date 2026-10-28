@@ -13,10 +13,10 @@ export const grievances = {
 export type Grievance = keyof typeof grievances;
 
 export function grievanceOf(e: unknown): Grievance {
-	console.error(e);
 	const msg = String((e as Error)?.message ?? e);
+	if (msg in grievances) return msg as Grievance;
 	if (msg === 'decrypt') return 'mismatch';
-	if (msg === 'version') return 'version';
-	if (msg === 'room') return 'room';
+	if (String(e).includes('QuotaExceededError')) return 'room';
+	console.error(e);
 	return 'broken';
 }

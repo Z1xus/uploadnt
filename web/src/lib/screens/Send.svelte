@@ -2,10 +2,10 @@
 	import { seedOf } from '#lib/marker.ts';
 	import type { Sending } from '../sending.svelte';
 	import { percent, size } from '../rate';
-	import { grievances } from '../grievance';
 	import Arrow from '../ui/Arrow.svelte';
 	import Aside from '../ui/Aside.svelte';
 	import Button from '../ui/Button.svelte';
+	import Failure from '../ui/Failure.svelte';
 	import Mark from '../ui/Mark.svelte';
 	import Progress from '../ui/Progress.svelte';
 	import Qr from '../ui/Qr.svelte';
@@ -32,7 +32,7 @@
 
 {#if s.phase === 'waiting' && s.more}
 	<p class="text-3xl">waiting for them to take it.</p>
-	<div class="mt-8">{@render list()}</div>
+	<div class="mt-3">{@render list()}</div>
 	<button class="mt-10 block text-muted hover:underline" onclick={onback}>cancel</button>
 {:else if s.phase === 'waiting'}
 	<div class="relative">
@@ -84,6 +84,6 @@
 		onchange={() => input?.files?.length && onmore([...input.files])}
 	/>
 {:else}
-	<p class="text-3xl text-accent">{grievances[s.grievance ?? 'broken']}</p>
+	<Failure grievance={s.grievance} error={s.error} />
 	<div class="mt-10"><Button onclick={() => location.reload()}>start over</Button></div>
 {/if}

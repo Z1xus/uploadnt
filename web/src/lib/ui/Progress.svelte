@@ -24,8 +24,8 @@
 	{/if}
 </p>
 {#if path === 'tcp'}
-	<p class="mt-4 text-muted">
-		this network blocks udp, so we're using <span class="badge">plan b</span> instead.
+	<p class="mt-3 text-muted">
+		this network blocks udp, so we're using <span class="text-accent">plan b</span> instead.
 	</p>
 {/if}
 {@render children?.()}

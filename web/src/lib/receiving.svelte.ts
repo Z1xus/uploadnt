@@ -23,6 +23,7 @@ export class Receiving {
 	alone = $state(false);
 	where = $state('');
 	grievance = $state<Grievance>();
+	error = $state<string>();
 
 	private link?: ParsedLink;
 	private lobby?: Lobby;
@@ -62,7 +63,7 @@ export class Receiving {
 		try {
 			this.sink = await openSink(root, this.files, this.size);
 		} catch (e) {
-			if ((e as Error).name !== 'AbortError') this.fail(grievanceOf(e));
+			if ((e as Error).name !== 'AbortError') this.fail(e);
 			return;
 		} finally {
 			this.taking = false;
@@ -106,7 +107,7 @@ export class Receiving {
 			session.accept(have, performance.now());
 			this.events();
 		} catch (err) {
-			this.fail(grievanceOf(err));
+			this.fail(err);
 		}
 	}
 
@@ -124,7 +125,7 @@ export class Receiving {
 				case 'sealed': {
 					const attempt = this.attempt;
 					attempt?.onSealed(e.data).catch((err) => {
-						if (this.attempt === attempt) this.fail(grievanceOf(err));
+						if (this.attempt === attempt) this.fail(err);
 					});
 					break;
 				}
@@ -132,7 +133,7 @@ export class Receiving {
 					if (!this.met) this.fail('full');
 			}
 		} catch (err) {
-			this.fail(grievanceOf(err));
+			this.fail(err);
 		}
 	}
 
@@ -162,13 +163,13 @@ export class Receiving {
 						this.session.handle(msg, performance.now());
 						this.events();
 					} catch (err) {
-						this.fail(grievanceOf(err));
+						this.fail(err);
 					}
 				};
 				this.path = await peer.path();
 				this.flush();
 			} catch (err) {
-				this.fail(grievanceOf(err));
+				this.fail(err);
 			}
 		};
 		peer.onclose = () => {
@@ -199,7 +200,7 @@ export class Receiving {
 								session.written(e.chunk, performance.now());
 								this.events();
 							},
-							(err) => this.fail(grievanceOf(err))
+							(err) => this.fail(err)
 						);
 						break;
 					case 'progress':
@@ -225,7 +226,7 @@ export class Receiving {
 		try {
 			await this.sink!.finish();
 		} catch (err) {
-			this.fail(grievanceOf(err));
+			this.fail(err);
 			return;
 		}
 		this.committed = have;
@@ -256,8 +257,9 @@ export class Receiving {
 		for (const msg of this.session.transmit()) peer.send(msg);
 	}
 
-	private fail(grievance: Grievance) {
-		this.grievance = grievance;
+	private fail(err: unknown) {
+		this.grievance = grievanceOf(err);
+		this.error = String(err);
 		this.phase = 'failed';
 		this.close();
 	}
