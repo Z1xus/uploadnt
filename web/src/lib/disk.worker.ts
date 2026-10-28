@@ -13,6 +13,19 @@ let have: Uint8Array;
 let opened = '';
 let dirty = 0;
 
+async function lock(file: FileSystemFileHandle) {
+	// a reloaded page can race the old page's worker, which still holds the handle for a moment
+	for (let tries = 0; ; tries++) {
+		try {
+			return await file.createSyncAccessHandle();
+		} catch (e) {
+			if ((e as Error).name !== 'NoModificationAllowedError') throw e;
+			if (tries === 10) throw new Error('tab');
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+	}
+}
+
 function persist() {
 	files.forEach((f) => f.flush());
 	bitmap.write(have, { at: 0 });
@@ -32,11 +45,11 @@ async function handle(req: Request) {
 				await navigator.storage.getDirectory()
 			).getDirectoryHandle(req.root, { create: true });
 			for (const [i, size] of req.sizes.entries()) {
-				const file = await (await dir.getFileHandle(`${i}`, { create: true })).createSyncAccessHandle();
+				const file = await lock(await dir.getFileHandle(`${i}`, { create: true }));
 				if (file.getSize() !== size) file.truncate(size);
 				files.push(file);
 			}
-			bitmap = await (await dir.getFileHandle('have', { create: true })).createSyncAccessHandle();
+			bitmap = await lock(await dir.getFileHandle('have', { create: true }));
 			have = new Uint8Array(Math.ceil(req.chunks / 8));
 			bitmap.read(have, { at: 0 });
 			return have.slice();
@@ -64,7 +77,7 @@ onmessage = ({ data: { id, req } }: MessageEvent<{ id: number; req: Request }>) 
 	queue = queue.then(() =>
 		handle(req).then(
 			(result) => postMessage({ id, result }),
-			(error) => postMessage({ id, error: String(error) })
+			(error: Error) => postMessage({ id, error: error.message, name: error.name })
 		)
 	);
 };

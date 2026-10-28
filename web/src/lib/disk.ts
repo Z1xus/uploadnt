@@ -75,7 +75,7 @@ class Staged implements Sink {
 		this.worker.onmessage = ({ data }) => {
 			const call = this.calls.get(data.id)!;
 			this.calls.delete(data.id);
-			if ('error' in data) call.reject(new Error(data.error));
+			if ('error' in data) call.reject(Object.assign(new Error(data.error), { name: data.name }));
 			else call.resolve(data.result);
 		};
 	}

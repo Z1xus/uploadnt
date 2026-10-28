@@ -6,6 +6,7 @@ export const grievances = {
 	unreachable: "couldn't connect. try a different network.",
 	left: 'the other person stopped the transfer.',
 	room: 'not enough storage in this browser. try chrome on a computer.',
+	tab: 'this file is open in another tab. close that tab and try again.',
 	safari: 'keep this tab in front, or safari will pause the transfer.',
 	broken: 'something went wrong. reload and try again.'
 } as const;
