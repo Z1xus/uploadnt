@@ -184,7 +184,9 @@ export class Sending {
 						this.fail(err);
 					}
 				};
-				this.path = await peer.path();
+				const path = await peer.path();
+				// the remote relay candidate often shows up as peer reflexive on this side
+				this.path = path === 'direct' && attempt.relayed ? 'relayed' : path;
 				this.flush();
 			} catch (err) {
 				this.fail(err);

@@ -61,7 +61,9 @@
 		<Aside><p>preparing… {percent(s.hashed, s.total)}%</p></Aside>
 	{/if}
 {:else if s.phase === 'sending'}
-	<Progress value={s.bytes / Math.max(s.total, 1)} rate={s.rate} path={s.path} label="not uploading" />
+	<Progress value={s.bytes / Math.max(s.total, 1)} rate={s.rate} path={s.path}>
+		{#snippet label()}<Mark kind="underline" seed={seed + 9}>not</Mark> uploading{/snippet}
+	</Progress>
 	<button class="mt-10 block text-muted hover:underline" onclick={onback}>cancel</button>
 {:else if s.phase === 'done'}
 	<p class="text-4xl break-words">

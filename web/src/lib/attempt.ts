@@ -4,6 +4,7 @@ import { Peer, type Signal } from './peer';
 
 export class Attempt {
 	keys?: Keys;
+	relayed = false;
 	private pake: Pake;
 	private queue: Signal[] = [];
 	private ready: boolean;
@@ -36,7 +37,8 @@ export class Attempt {
 		if (signal.relay) {
 			const direct = this.queue;
 			this.queue = [];
-			if (!(await this.peer.relay(this.lobby.turn))) this.queue = direct;
+			this.relayed = await this.peer.relay(this.lobby.turn);
+			if (!this.relayed) this.queue = direct;
 		}
 		this.ready = true;
 		this.flush();
