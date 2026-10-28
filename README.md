@@ -10,7 +10,7 @@ Build the image with [Docker](https://docs.docker.com/get-docker) or [Podman](ht
 
 ```sh
 just web && bun deploy/provenance.ts web/build
-docker build -f deploy/selfhost/Dockerfile -t localhost/uploadnt-lobby .
+docker build -f deploy/selfhost/Dockerfile -t uploadnt .
 ```
 
 On the server, put `deploy/selfhost/compose.yaml` in a folder with `deploy/relay` as `relay`, and add:
@@ -20,6 +20,8 @@ On the server, put `deploy/selfhost/compose.yaml` in a folder with `deploy/relay
 - your relay's hostname in `TURN_URLS` in `compose.yaml`
 
 Then run `docker compose up -d` and open UDP and TCP 3478 and UDP 49160-49999 for the relay.
+
+To deploy from your fork's CI instead, run `REPO=you/uploadnt deploy/selfhost/update.sh` on a timer. It only runs images that GitHub attests your CI built.
 
 You can replace the tunnel with any reverse proxy that supports WebSockets. The relay is optional, but without it there is no [plan b](https://uploadnt.com/rest#connection) for people who can't connect directly.
 

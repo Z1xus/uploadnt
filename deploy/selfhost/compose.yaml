@@ -3,8 +3,7 @@ include:
 
 services:
   lobby:
-    image: localhost/uploadnt-lobby:latest
-    pull_policy: never
+    image: ${IMAGE:-uploadnt}
     init: true
     read_only: true
     cap_drop: [ALL]
