@@ -17,11 +17,11 @@
 			d={s.d}
 			pathLength="1"
 			stroke-width="2.5"
-			style:stroke={s.red ? '' : 'var(--ink)'}
+			style:stroke={s.tone === 'red' ? '' : 'var(--ink)'}
 			style:--delay="{i * 45}ms"
 		/>
 	{/each}
-	<g class="fill-ink font-fine text-[15px]">
+	<g class="halo fill-ink font-fine text-[15px]">
 		<text x="40" y="170" text-anchor="middle">you</text>
 		<text x="280" y="170" text-anchor="middle">friend</text>
 		{#if kind === 'corp'}

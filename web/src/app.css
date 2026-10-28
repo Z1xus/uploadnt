@@ -149,3 +149,10 @@ html {
 		animation: none;
 	}
 }
+
+.halo text {
+	paint-order: stroke;
+	stroke: var(--paper);
+	stroke-width: 10px;
+	stroke-linejoin: round;
+}
