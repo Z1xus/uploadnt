@@ -4,6 +4,7 @@ include:
 services:
   lobby:
     image: localhost/uploadnt-lobby:latest
+    pull_policy: never
     init: true
     read_only: true
     cap_drop: [ALL]
@@ -15,7 +16,7 @@ services:
     restart: unless-stopped
 
   tunnel:
-    image: docker.io/cloudflare/cloudflared:2026.9.3
+    image: docker.io/cloudflare/cloudflared:2026.10.5
     command: tunnel --no-autoupdate run
     env_file: [tunnel.env]
     read_only: true
