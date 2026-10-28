@@ -732,6 +732,7 @@ dependencies = [
  "axum",
  "getrandom 0.2.17",
  "postcard",
+ "serde",
  "tokio",
  "tower-http",
  "uploadnt-core",

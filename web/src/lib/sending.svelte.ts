@@ -204,6 +204,7 @@ export class Sending {
 
 	private begin() {
 		this.phase = 'sending';
+		navigator.sendBeacon('/stats', this.path === 'direct' ? 'direct' : 'planb');
 		navigator.wakeLock
 			?.request('screen')
 			.then((lock) => (this.lock = lock))

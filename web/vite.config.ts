@@ -7,6 +7,6 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit({ adapter: adapter() })],
 	server: {
 		fs: { allow: ['..'] },
-		proxy: { '/m': { target: 'ws://localhost:8787', ws: true } }
+		proxy: { '/m': { target: 'ws://localhost:8787', ws: true }, '/stats': 'http://localhost:8787' }
 	}
 });

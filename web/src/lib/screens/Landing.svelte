@@ -11,6 +11,15 @@
 
 	let input: HTMLInputElement;
 	let over = $state(false);
+	let planb = $state<number>();
+
+	fetch('/stats')
+		.then((r) => r.json())
+		.then((s: { direct: number; planb: number }) => {
+			// a handful of transfers says nothing about networks
+			if (s.direct + s.planb >= 50) planb = Math.round((100 * s.planb) / (s.direct + s.planb));
+		})
+		.catch(() => {});
 
 	function drop(e: DragEvent) {
 		e.preventDefault();
@@ -65,6 +74,9 @@
 			<p use:tilted={seed + 5}>it goes as fast as your connection sends.</p>
 			<p use:tilted={seed + 6}>phones sleep. keep the screen on.</p>
 			<p class="text-marker" use:tilted={seed + 7}>yes, really.</p>
+			{#if planb !== undefined}
+				<p use:tilted={seed + 8}>in the last 30 days, {planb}% of transfers needed plan b.</p>
+			{/if}
 		</Margin>
 	</div>
 </main>

@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 uploadnt-core.workspace = true
 postcard.workspace = true
+serde.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum = { version = "0.8", features = ["ws"] }

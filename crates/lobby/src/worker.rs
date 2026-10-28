@@ -1,7 +1,7 @@
 use uploadnt_core::Lobby;
 use worker::*;
 
-use crate::{MAX_MESSAGE, encode, valid_mailbox};
+use crate::{MAX_MESSAGE, Stats, encode, valid_mailbox};
 
 const TURN_TTL_SECS: u32 = 12 * 3600;
 
@@ -10,6 +10,9 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let path = req.path();
     if path == "/turn/credentials" {
         return turn(&env).await;
+    }
+    if path == "/stats" {
+        return env.durable_object("TALLY")?.id_from_name("all")?.get_stub()?.fetch_with_request(req).await;
     }
     match path.strip_prefix("/m/") {
         Some(mailbox) if valid_mailbox(mailbox) => {
@@ -34,6 +37,37 @@ async fn turn(env: &Env) -> Result<Response> {
     out.headers_mut().set("Content-Type", "application/json")?;
     out.headers_mut().set("Cache-Control", "no-store")?;
     Ok(out)
+}
+
+#[durable_object]
+pub struct Tally {
+    state: State,
+}
+
+impl DurableObject for Tally {
+    fn new(state: State, _env: Env) -> Self {
+        Self { state }
+    }
+
+    async fn fetch(&self, mut req: Request) -> Result<Response> {
+        let day = Date::now().as_millis() / 86_400_000;
+        let storage = self.state.storage();
+        if req.method() == Method::Post {
+            if req.headers().get("Content-Length")?.and_then(|n| n.parse::<usize>().ok()).is_none_or(|n| n > 8) {
+                return Response::error("too big", 413);
+            }
+            let path = req.text().await?;
+            let mut stats: Stats = storage.get("days").await?.unwrap_or_default();
+            stats.count(day, &path);
+            storage.put("days", &stats).await?;
+            return Response::empty();
+        }
+        let stats: Stats = storage.get("days").await?.unwrap_or_default();
+        let mut res = Response::ok(stats.json(day))?;
+        res.headers_mut().set("Content-Type", "application/json")?;
+        res.headers_mut().set("Cache-Control", "max-age=300")?;
+        Ok(res)
+    }
 }
 
 #[durable_object]

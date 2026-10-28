@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use axum::Router;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Path, State};
+use axum::extract::{DefaultBodyLimit, Path, State};
+use axum::http::header;
 use axum::response::Response;
 use axum::routing::get;
-use lobby::{MAX_MESSAGE, encode, valid_mailbox};
+use lobby::{MAX_MESSAGE, Stats, encode, valid_mailbox};
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use tower_http::services::{ServeDir, ServeFile};
 use uploadnt_core::Lobby;
@@ -24,10 +25,29 @@ pub async fn main() {
     let site = std::env::var("SITE").unwrap_or_else(|_| "web/build".into());
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "0.0.0.0:8787".into());
     let pages = ServeDir::new(&site).fallback(ServeFile::new(format!("{site}/index.html")));
-    let app = Router::new().route("/m/{mailbox}", get(join)).fallback_service(pages).with_state(Rooms::default());
+    let stats = Router::new()
+        .route("/stats", get(read_stats).post(count).layer(DefaultBodyLimit::max(8)))
+        .with_state(Arc::new(Mutex::new(Stats::default())));
+    let app = Router::new()
+        .route("/m/{mailbox}", get(join))
+        .with_state(Rooms::default())
+        .merge(stats)
+        .fallback_service(pages);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("lobby on {addr}, serving {site}");
     axum::serve(listener, app).await.unwrap();
+}
+
+fn today() -> u64 {
+    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() / 86400
+}
+
+async fn read_stats(State(stats): State<Arc<Mutex<Stats>>>) -> ([(header::HeaderName, &'static str); 1], String) {
+    ([(header::CONTENT_TYPE, "application/json")], stats.lock().unwrap().json(today()))
+}
+
+async fn count(State(stats): State<Arc<Mutex<Stats>>>, path: String) {
+    stats.lock().unwrap().count(today(), &path);
 }
 
 async fn join(Path(mailbox): Path<String>, State(rooms): State<Rooms>, ws: WebSocketUpgrade) -> Response {
