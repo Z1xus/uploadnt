@@ -49,7 +49,6 @@ function record(update: (current?: Pending) => Pending | undefined) {
 
 export class Sending {
 	phase = $state<Phase>('waiting');
-	hashed = $state(0);
 	bytes = $state(0);
 	rate = $state(0);
 	path = $state<Path>('direct');
@@ -139,15 +138,11 @@ export class Sending {
 		const builder = new ManifestBuilder(
 			this.files.map((f) => ({ name: f.webkitRelativePath || f.name, size: f.size, mime: f.type }))
 		);
-		let hashed = 0;
 		for (let span = builder.next(); span; span = builder.next()) {
 			if (this.closed) throw new Error('cancelled');
 			const file = this.files[span.file];
 			builder.push(new Uint8Array(await file.slice(span.offset, span.offset + span.len).arrayBuffer()));
-			hashed += span.len;
-			this.hashed = hashed;
 		}
-		this.hashed = this.total;
 		return builder;
 	}
 

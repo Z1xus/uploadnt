@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { seedOf } from '#lib/marker.ts';
 	import type { Sending } from '../sending.svelte';
-	import { percent, size } from '../rate';
+	import { size } from '../rate';
 	import Arrow from '../ui/Arrow.svelte';
 	import Button from '../ui/Button.svelte';
 	import Failure from '../ui/Failure.svelte';
@@ -27,9 +27,6 @@
 				{f.webkitRelativePath || f.name} <span class="text-muted">{size(f.size)}</span>
 			</li>{/each}
 	</ul>
-	<p class="mt-1 text-sm text-muted tabular-nums {s.hashed < s.total ? '' : 'invisible'}">
-		preparing… {percent(s.hashed, s.total)}%
-	</p>
 {/snippet}
 
 {#if s.phase === 'waiting' && s.more}
