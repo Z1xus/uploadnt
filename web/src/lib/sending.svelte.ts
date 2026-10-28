@@ -1,0 +1,178 @@
+import { Attempt } from './attempt';
+import {
+	ManifestBuilder,
+	newSecret,
+	parseLink,
+	type CoreEvent,
+	type LobbyEvent,
+	type SenderSession
+} from './core';
+import { grievanceOf, type Grievance } from './grievance';
+import { Lobby } from './lobby';
+import { Peer } from './peer';
+import { Rate } from './rate';
+
+type Phase = 'waiting' | 'sending' | 'done' | 'failed';
+
+export class Sending {
+	phase = $state<Phase>('waiting');
+	hashed = $state(0);
+	bytes = $state(0);
+	rate = $state(0);
+	relayed = $state(false);
+	grievance = $state<Grievance>();
+	readonly link: string;
+	readonly total: number;
+
+	private secret = newSecret();
+	private lobby: Lobby;
+	private manifest: Promise<ManifestBuilder>;
+	private attempt?: Attempt;
+	private spare = this.prewarm();
+	private session?: SenderSession;
+	private reads: Extract<CoreEvent, { type: 'read' }>[] = [];
+	private reading = false;
+	private meter = new Rate();
+	private lock?: WakeLockSentinel;
+
+	constructor(readonly files: File[]) {
+		this.link = `${location.origin}/#${this.secret}`;
+		this.total = files.reduce((n, f) => n + f.size, 0);
+		this.manifest = this.hash();
+		this.lobby = new Lobby(Lobby.url(parseLink(this.secret)!.mailbox), (e) => this.onLobby(e));
+	}
+
+	close() {
+		this.lobby.close();
+		this.attempt?.close();
+		this.lock?.release();
+	}
+
+	private prewarm() {
+		const peer = new Peer(true);
+		peer.start();
+		return peer;
+	}
+
+	private async hash() {
+		const builder = new ManifestBuilder(
+			this.files.map((f) => ({ name: f.webkitRelativePath || f.name, size: f.size, mime: f.type }))
+		);
+		let hashed = 0;
+		for (let span = builder.next(); span; span = builder.next()) {
+			const file = this.files[span.file];
+			builder.push(new Uint8Array(await file.slice(span.offset, span.offset + span.len).arrayBuffer()));
+			hashed += span.len;
+			this.hashed = hashed;
+		}
+		this.hashed = this.total;
+		return builder;
+	}
+
+	private onLobby(e: LobbyEvent) {
+		try {
+			switch (e.type) {
+				case 'peer':
+					if (e.present && this.phase !== 'done') this.connect();
+					break;
+				case 'pake':
+					this.attempt?.onPake(e.data);
+					break;
+				case 'sealed':
+					this.attempt?.onSealed(e.data).catch((err) => this.fail(err));
+			}
+		} catch (err) {
+			this.fail(err);
+		}
+	}
+
+	private connect() {
+		this.attempt?.close();
+		this.session = undefined;
+		this.reads = [];
+		const peer = this.spare;
+		this.spare = this.prewarm();
+		const attempt = new Attempt(this.secret, true, this.lobby, peer);
+		this.attempt = attempt;
+		peer.onopen = async () => {
+			const builder = await this.manifest;
+			if (this.attempt !== attempt) return;
+			this.session = attempt.keys!.sender(builder);
+			this.relayed = await peer.relayed();
+			this.flush();
+		};
+		peer.onmessage = (msg) => {
+			if (this.attempt !== attempt || !this.session) return;
+			try {
+				this.session.handle(msg);
+				this.events();
+			} catch (err) {
+				this.fail(err);
+			}
+		};
+	}
+
+	private events() {
+		for (const e of this.session!.events()) {
+			switch (e.type) {
+				case 'read':
+					this.reads.push(e);
+					break;
+				case 'progress':
+					if (this.phase === 'waiting') this.begin();
+					this.bytes = e.bytes;
+					this.rate = this.meter.push(e.bytes);
+					document.title = `${Math.floor((100 * e.bytes) / Math.max(e.total, 1))}% · uploadn't`;
+					break;
+				case 'done':
+					this.phase = 'done';
+					this.bytes = this.total;
+					document.title = "uploadn't";
+					this.close();
+					break;
+				case 'closed':
+					this.fail(new Error('left'));
+			}
+		}
+		this.read();
+		this.flush();
+	}
+
+	private begin() {
+		this.phase = 'sending';
+		navigator.wakeLock
+			?.request('screen')
+			.then((lock) => (this.lock = lock))
+			.catch(() => {});
+	}
+
+	private async read() {
+		if (this.reading) return;
+		this.reading = true;
+		try {
+			const attempt = this.attempt;
+			for (let r = this.reads.shift(); r; r = this.reads.shift()) {
+				const data = await this.files[r.file].slice(r.offset, r.offset + r.len).arrayBuffer();
+				if (this.attempt !== attempt) return;
+				this.session!.provide(r.chunk, new Uint8Array(data));
+				await this.flush();
+			}
+		} finally {
+			this.reading = false;
+		}
+	}
+
+	private async flush() {
+		const peer = this.attempt?.peer;
+		if (!peer || !this.session) return;
+		for (const msg of this.session.transmit()) peer.send(msg);
+		await peer.drain();
+	}
+
+	private fail(err: unknown) {
+		const msg = String((err as Error)?.message ?? err);
+		this.grievance = msg === 'left' ? 'left' : grievanceOf(err);
+		this.phase = 'failed';
+		this.close();
+	}
+}

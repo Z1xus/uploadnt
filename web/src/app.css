@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+@font-face {
+	font-family: Karrik;
+	src: url('../../design/fonts/Karrik-Regular.woff2') format('woff2');
+	font-display: block;
+}
+
+@font-face {
+	font-family: Karrik;
+	font-style: italic;
+	src: url('../../design/fonts/Karrik-Italic.woff2') format('woff2');
+	font-display: block;
+}
+
+@font-face {
+	font-family: Redaction;
+	src: url('../../design/fonts/Redaction70-Regular.woff2') format('woff2');
+	font-display: swap;
+}
+
+@theme inline {
+	--color-paper: var(--paper);
+	--color-ink: var(--ink);
+	--color-marker: var(--marker);
+	--color-graphite: var(--graphite);
+	--font-sans: Karrik, ui-sans-serif, sans-serif;
+	--font-fine: Redaction, Karrik, serif;
+}
+
+:root {
+	--paper: #f3efe6;
+	--ink: #15130f;
+	--marker: #e0312b;
+	--graphite: #8a847a;
+	--bleed: 0.3px;
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--paper: #0f0e0c;
+		--ink: #ece7dc;
+		--marker: #ff4f47;
+		--graphite: #6f6a62;
+		--bleed: 0;
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme='dark'] {
+	--paper: #0f0e0c;
+	--ink: #ece7dc;
+	--marker: #ff4f47;
+	--graphite: #6f6a62;
+	--bleed: 0;
+	color-scheme: dark;
+}
+
+html {
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	text-transform: lowercase;
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: var(--marker);
+	color: var(--paper);
+}
+
+.bleed {
+	filter: blur(var(--bleed));
+}
+
+.mark path {
+	fill: none;
+	stroke: var(--marker);
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: draw 300ms ease-out forwards;
+	animation-delay: var(--delay, 0ms);
+}
+
+.stamp {
+	animation: slam 120ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both;
+}
+
+@keyframes draw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes slam {
+	from {
+		transform: scale(1.6) rotate(var(--rot, -2deg));
+		opacity: 0;
+	}
+	to {
+		transform: scale(1) rotate(var(--rot, -2deg));
+		opacity: 1;
+	}
+}
+
+@keyframes fade {
+	from {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mark path {
+		stroke-dashoffset: 0;
+		animation: fade 300ms ease-out both;
+	}
+	.stamp {
+		animation: none;
+		transform: rotate(var(--rot, -2deg));
+	}
+}
