@@ -1,0 +1,26 @@
+name: verify
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  attestations: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun deploy/verify.ts https://uploadnt.dev ${{ github.repository }} | tee result.json
+      - if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue create --title "production does not match what github built" --body-file result.json
