@@ -11,5 +11,5 @@
 </script>
 
 <div class="bleed -ml-[0.06em] text-[min(55vh,48vw)] leading-[0.8] tabular-nums" {style} aria-live="polite">
-	{pct}
+	{pct}<span class="ml-[0.04em] align-top text-[0.28em] leading-none">%</span>
 </div>

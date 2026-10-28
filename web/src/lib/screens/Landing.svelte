@@ -56,7 +56,7 @@
 			: 'border-ink'}"
 	>
 		<p class="mb-8 text-xl">
-			{#if over}drop to send.{:else if again}choose files to send on the same link.{:else if previous}choose <span
+			{#if over}drop to send.{:else if again}choose more files for the same person.{:else if previous}choose <span
 					>{previous.files.map((f) => f.name).join(', ')}</span
 				> again to keep the same link.{:else}<span class="pointer-coarse:hidden"
 					>drop a file anywhere, or choose one.</span

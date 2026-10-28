@@ -28,10 +28,15 @@
 		<Send
 			s={sending}
 			onback={async () => {
-				again = sending?.phase === 'done' ? sending.secret : undefined;
+				again = undefined;
 				sending?.cancel();
 				sending = undefined;
 				previous = await pending();
+			}}
+			onmore={() => {
+				again = sending?.secret;
+				sending?.cancel();
+				sending = undefined;
 			}}
 		/>
 	{:else}

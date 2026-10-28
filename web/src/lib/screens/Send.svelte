@@ -12,7 +12,7 @@
 	import Qr from '../ui/Qr.svelte';
 	import Stamp from '../ui/Stamp.svelte';
 
-	let { s, onback }: { s: Sending; onback: () => void } = $props();
+	let { s, onback, onmore }: { s: Sending; onback: () => void; onmore: () => void } = $props();
 
 	const back = 'mt-10 block cursor-pointer text-graphite underline-offset-4 hover:underline';
 
@@ -62,13 +62,20 @@
 		{/if}
 	{:else if s.phase === 'sending'}
 		<Digit value={s.bytes / Math.max(s.total, 1)} />
-		<p class="mt-6 text-xl">not uploading{s.rate ? ` · ${size(s.rate)}/s` : ''}</p>
+		<p class="mt-6 flex flex-wrap gap-x-6 text-xl">
+			<span>not uploading</span>{#if s.rate}<span>{size(s.rate)}/s</span>{/if}
+		</p>
 		<p class="mt-3 text-xl"><Path path={s.path} /></p>
 		<button class={back} onclick={onback}>cancel</button>
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />
 		<p class="mt-6 text-xl">sent.</p>
-		<div class="mt-10"><Stamp onclick={onback}>send another</Stamp></div>
+		<div class="mt-10 flex flex-wrap items-center gap-8">
+			<Stamp onclick={onmore}>send them more</Stamp>
+			<button class="cursor-pointer text-graphite underline-offset-4 hover:underline" onclick={onback}
+				>i'm done</button
+			>
+		</div>
 	{:else}
 		<p class="text-3xl text-marker">{grievances[s.grievance ?? 'broken']}</p>
 		<div class="mt-10"><Stamp onclick={() => location.reload()}>start over</Stamp></div>

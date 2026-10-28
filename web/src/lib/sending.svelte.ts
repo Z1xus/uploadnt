@@ -193,7 +193,7 @@ export class Sending {
 					if (this.phase === 'waiting') this.begin();
 					this.bytes = e.bytes;
 					this.rate = this.meter.push(e.bytes);
-					document.title = `${Math.floor((100 * e.bytes) / Math.max(e.total, 1))}% · uploadn't`;
+					document.title = `${Math.floor((100 * e.bytes) / Math.max(e.total, 1))}% uploadn't`;
 					break;
 				case 'done':
 					this.phase = 'done';
