@@ -50,7 +50,7 @@
 		{/if}
 	{:else if s.phase === 'sending'}
 		<Digit value={s.bytes / Math.max(s.total, 1)} />
-		<p class="mt-6 text-xl">not uploading · {size(s.rate)}/s</p>
+		<p class="mt-6 text-xl">not uploading{s.rate ? ` · ${size(s.rate)}/s` : ''}</p>
 		<p class="mt-3 text-xl"><Path relayed={s.relayed} /></p>
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />

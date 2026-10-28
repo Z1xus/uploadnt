@@ -74,11 +74,22 @@ html {
 	filter: blur(var(--bleed));
 }
 
-.mark path {
+.mark path,
+.scrawl path {
 	fill: none;
 	stroke: var(--marker);
 	stroke-linecap: round;
 	stroke-linejoin: round;
+}
+
+/* firefox forgets pathLength once vector-effect is on, so marks get wiped in with a clip instead of drawn. fuck you firefox */
+.mark {
+	clip-path: inset(-100% 105% -100% -5%);
+	animation: wipe 300ms ease-out forwards;
+	animation-delay: var(--delay, 0ms);
+}
+
+.scrawl path {
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 	animation: draw 300ms ease-out forwards;
@@ -87,6 +98,12 @@ html {
 
 .stamp {
 	animation: slam 120ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both;
+}
+
+@keyframes wipe {
+	to {
+		clip-path: inset(-100% -5% -100% -5%);
+	}
 }
 
 @keyframes draw {
@@ -113,7 +130,9 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.mark path {
+	.mark,
+	.scrawl path {
+		clip-path: none;
 		stroke-dashoffset: 0;
 		animation: fade 300ms ease-out both;
 	}

@@ -27,12 +27,14 @@
 		<div class="mt-12"><Stamp onclick={() => r.take()}>take it</Stamp></div>
 	{:else if r.phase === 'receiving'}
 		<Digit value={r.bytes / Math.max(r.size, 1)} />
-		<p class="mt-6 text-xl">{size(r.rate)}/s · <Path relayed={r.relayed} /></p>
+		<p class="mt-6 text-xl">{r.rate ? `${size(r.rate)}/s · ` : ''}<Path relayed={r.relayed} /></p>
 		<p class="mt-3 text-graphite">{r.where}</p>
 	{:else if r.phase === 'done'}
 		<Done names={r.files.map((f) => f.name)} />
 	{:else}
 		<p class="text-3xl text-marker" use:tilted={seed}>{grievances[r.grievance ?? 'broken']}</p>
-		<div class="mt-10"><Stamp onclick={() => location.reload()}>try again</Stamp></div>
+		{#if r.grievance !== 'link' && r.grievance !== 'full'}
+			<div class="mt-10"><Stamp onclick={() => location.reload()}>try again</Stamp></div>
+		{/if}
 	{/if}
 </main>

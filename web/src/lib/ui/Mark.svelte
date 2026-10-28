@@ -25,5 +25,5 @@
 	aria-hidden="true"
 	style:--delay="{delay}ms"
 >
-	<path {d} pathLength="1" stroke-width={width} vector-effect="non-scaling-stroke" />
+	<path {d} stroke-width={width} vector-effect="non-scaling-stroke" />
 </svg>

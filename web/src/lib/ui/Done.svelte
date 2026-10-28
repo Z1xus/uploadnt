@@ -14,7 +14,6 @@
 	>
 		<path
 			d={underline(seedOf(names.join()))}
-			pathLength="1"
 			stroke-width="2"
 			vector-effect="non-scaling-stroke"
 			style:stroke="var(--ink)"
