@@ -12,6 +12,7 @@
 	let sending = $state<Sending>();
 	let receiving = $state<Receiving>();
 	let previous = $state<Pending>();
+	let again = $state<string>();
 	const ready = loadCore().then(async () => {
 		if (fragment) receiving = new Receiving(fragment);
 		else previous = await pending();
@@ -27,12 +28,18 @@
 		<Send
 			s={sending}
 			onback={async () => {
+				again = sending?.phase === 'done' ? sending.secret : undefined;
 				sending?.cancel();
 				sending = undefined;
 				previous = await pending();
 			}}
 		/>
 	{:else}
-		<Landing {seed} {previous} onfiles={(files: File[]) => (sending = new Sending(files, previous))} />
+		<Landing
+			{seed}
+			{previous}
+			again={!!again}
+			onfiles={(files: File[]) => (sending = new Sending(files, previous, again))}
+		/>
 	{/if}
 {/await}

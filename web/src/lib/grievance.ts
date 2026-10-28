@@ -1,13 +1,13 @@
 export const grievances = {
-	link: "This link isn't valid. Ask for a new one.",
-	full: 'This link is already in use. Ask for a new one.',
-	mismatch: "This link doesn't match. Ask for it again.",
-	version: "You're on different versions. Both of you reload the page.",
-	unreachable: "Couldn't connect. Try a different network.",
-	left: 'The other person stopped the transfer.',
-	room: 'Not enough storage in this browser. Try Chrome on a computer.',
-	safari: 'Keep this tab in front, or Safari will pause the transfer.',
-	broken: 'Something went wrong. Reload and try again.'
+	link: "this link isn't valid. ask for a new one.",
+	full: 'this link is already in use. ask for a new one.',
+	mismatch: "this link doesn't match. ask for it again.",
+	version: "you're on different versions. both of you reload the page.",
+	unreachable: "couldn't connect. try a different network.",
+	left: 'the other person stopped the transfer.',
+	room: 'not enough storage in this browser. try chrome on a computer.',
+	safari: 'keep this tab in front, or safari will pause the transfer.',
+	broken: 'something went wrong. reload and try again.'
 } as const;
 
 export type Grievance = keyof typeof grievances;

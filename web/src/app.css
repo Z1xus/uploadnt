@@ -61,7 +61,6 @@ html {
 	background: var(--paper);
 	color: var(--ink);
 	font-family: var(--font-sans);
-	text-transform: lowercase;
 	font-variant-numeric: proportional-nums;
 	-webkit-font-smoothing: antialiased;
 }

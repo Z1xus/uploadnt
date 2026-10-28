@@ -16,15 +16,15 @@
 <main class="relative mx-auto max-w-[58ch] px-6 pt-[10vh]">
 	{#if r.phase === 'connecting'}
 		<p class="text-2xl text-graphite">
-			{r.alone ? 'Waiting for the sender. Their tab needs to be open.' : 'Connecting…'}
+			{r.alone ? 'waiting for the sender. their tab needs to be open.' : 'connecting…'}
 		</p>
 	{:else if r.phase === 'ask'}
-		<p class="text-3xl">Can't Connect Directly</p>
-		<p class="mt-3 text-xl text-graphite">This will transfer encrypted bytes over our relay.</p>
-		<div class="mt-12"><Stamp onclick={() => r.planb()}>Use Plan B</Stamp></div>
+		<p class="text-3xl">can't connect directly</p>
+		<p class="mt-3 text-xl text-graphite">this will transfer encrypted bytes over our relay.</p>
+		<div class="mt-12"><Stamp onclick={() => r.planb()}>use plan b</Stamp></div>
 	{:else if r.phase === 'offered'}
 		<ul class="space-y-1 text-3xl">
-			{#each r.files as f}<li class="break-all normal-case">{f.name}</li>{/each}
+			{#each r.files as f}<li class="break-all">{f.name}</li>{/each}
 		</ul>
 		<p class="mt-3 text-xl text-graphite">{size(r.size)}</p>
 		<div class="mt-12"><Stamp onclick={() => r.take()}>take it</Stamp></div>
@@ -34,6 +34,8 @@
 		<p class="mt-3 text-graphite">{r.where}</p>
 	{:else if r.phase === 'done'}
 		<Done names={r.files.map((f) => f.name)} />
+		<p class="mt-6 text-xl">received.</p>
+		<p class="mt-3 text-graphite">keep this tab open to get more files.</p>
 	{:else}
 		<p class="text-3xl text-marker">{grievances[r.grievance ?? 'broken']}</p>
 		{#if r.grievance !== 'link' && r.grievance !== 'full'}

@@ -114,7 +114,9 @@ export class Receiving {
 		try {
 			switch (e.type) {
 				case 'peer':
-					if (e.present) this.connect();
+					if (!e.present) break;
+					if (this.phase === 'done') this.reset();
+					this.connect();
 					break;
 				case 'pake':
 					this.attempt?.onPake(e.data);
@@ -233,7 +235,19 @@ export class Receiving {
 		this.phase = 'done';
 		document.title = "uploadn't";
 		// closing the connection throws away whatever is still queued, so we wait a second and pray
-		setTimeout(() => this.close(), 1000);
+		setTimeout(() => this.attempt?.close(), 1000);
+	}
+
+	// the same sender can send more files on this link after a transfer finishes
+	private reset() {
+		this.files = [];
+		this.size = this.bytes = this.rate = this.chunks = 0;
+		this.where = '';
+		this.sink = undefined;
+		this.finishing = false;
+		this.committed = undefined;
+		this.meter = new Rate();
+		this.phase = 'connecting';
 	}
 
 	private flush() {

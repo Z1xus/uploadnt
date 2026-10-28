@@ -55,7 +55,7 @@ export class Sending {
 	link = $state('');
 	readonly total: number;
 
-	private secret: string;
+	secret: string;
 	private lobby?: Lobby;
 	private manifest: Promise<ManifestBuilder>;
 	private attempt?: Attempt;
@@ -68,12 +68,13 @@ export class Sending {
 
 	constructor(
 		readonly files: File[],
-		previous?: Pending
+		previous?: Pending,
+		again?: string
 	) {
 		const same = JSON.stringify(previous?.files) === JSON.stringify(describe(files));
 		// a reused link must carry the same bytes, so wait for the root before joining
 		const check = same ? previous!.root : undefined;
-		this.secret = same ? previous!.secret : newSecret();
+		this.secret = same ? previous!.secret : (again ?? newSecret());
 		this.link = `${location.origin}/#${this.secret}`;
 		this.total = files.reduce((n, f) => n + f.size, 0);
 		this.manifest = this.hash();

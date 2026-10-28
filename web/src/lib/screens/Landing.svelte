@@ -5,8 +5,12 @@
 	import Struck from '../ui/Struck.svelte';
 	import type { Pending } from '../sending.svelte';
 
-	let { seed, previous, onfiles }: { seed: number; previous?: Pending; onfiles: (files: File[]) => void } =
-		$props();
+	let {
+		seed,
+		previous,
+		again,
+		onfiles
+	}: { seed: number; previous?: Pending; again: boolean; onfiles: (files: File[]) => void } = $props();
 
 	let input: HTMLInputElement;
 	let over = $state(false);
@@ -52,11 +56,11 @@
 			: 'border-ink'}"
 	>
 		<p class="mb-8 text-xl">
-			{#if over}Drop to send.{:else if previous}Choose <span class="normal-case"
+			{#if over}drop to send.{:else if again}choose files to send on the same link.{:else if previous}choose <span
 					>{previous.files.map((f) => f.name).join(', ')}</span
 				> again to keep the same link.{:else}<span class="pointer-coarse:hidden"
-					>Drop a file anywhere, or choose one.</span
-				><span class="hidden pointer-coarse:inline">Choose a file.</span>{/if}
+					>drop a file anywhere, or choose one.</span
+				><span class="hidden pointer-coarse:inline">choose a file.</span>{/if}
 		</p>
 		<Stamp onclick={() => input.click()}>give it away</Stamp>
 		<input
@@ -68,9 +72,8 @@
 		/>
 
 		<Margin>
-			<p>Files go straight to the other person. Nothing is stored.</p>
-			<p>Both of you keep the tab open until it finishes.</p>
-			<p>On a phone, keep the screen on.</p>
+			<p>send a file directly, with no third parties and no uploads.</p>
+			<p>keep this tab open until they've got it.</p>
 			{#if planb !== undefined}
 				<p>{planb}% of transfers used plan b in the last 30 days.</p>
 			{/if}

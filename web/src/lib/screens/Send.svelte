@@ -33,27 +33,28 @@
 		<div class="mt-10 flex flex-wrap items-end gap-10">
 			<div><Qr text={s.link} /></div>
 			<ul class="space-y-1 text-lg">
-				{#each s.files as f}<li class="break-all normal-case">
+				{#each s.files as f}<li class="break-all">
 						{f.webkitRelativePath || f.name} <span class="text-graphite">{size(f.size)}</span>
 					</li>{/each}
 			</ul>
 		</div>
 		<p class="relative mt-14 inline-block text-3xl">
-			Keep this tab open
+			keep this tab open
 			<Mark kind="underline" seed={seed + 5} delay={300} class="inset-x-0 -bottom-2 h-2 w-full" />
 		</p>
-		<button class={back} onclick={onback}>Cancel</button>
+		<button class={back} onclick={onback}>cancel</button>
 		{#if s.hashed < s.total}
-			<Margin><p>Preparing… {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
+			<Margin><p>preparing… {Math.floor((100 * s.hashed) / Math.max(s.total, 1))}%</p></Margin>
 		{/if}
 	{:else if s.phase === 'sending'}
 		<Digit value={s.bytes / Math.max(s.total, 1)} />
 		<p class="mt-6 text-xl">not uploading{s.rate ? ` · ${size(s.rate)}/s` : ''}</p>
 		<p class="mt-3 text-xl"><Path path={s.path} /></p>
-		<button class={back} onclick={onback}>Cancel</button>
+		<button class={back} onclick={onback}>cancel</button>
 	{:else if s.phase === 'done'}
 		<Done names={s.files.map((f) => f.webkitRelativePath || f.name)} />
-		<div class="mt-10"><Stamp onclick={onback}>Send Another</Stamp></div>
+		<p class="mt-6 text-xl">sent.</p>
+		<div class="mt-10"><Stamp onclick={onback}>send another</Stamp></div>
 	{:else}
 		<p class="text-3xl text-marker">{grievances[s.grievance ?? 'broken']}</p>
 		<div class="mt-10"><Stamp onclick={() => location.reload()}>start over</Stamp></div>
