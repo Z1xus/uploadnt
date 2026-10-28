@@ -8,6 +8,7 @@
 	import Margin from '../ui/Margin.svelte';
 	import Mark from '../ui/Mark.svelte';
 	import Path from '../ui/Path.svelte';
+	import Pointer from '../ui/Pointer.svelte';
 	import Qr from '../ui/Qr.svelte';
 	import Stamp from '../ui/Stamp.svelte';
 
@@ -26,10 +27,23 @@
 
 <main class="relative mx-auto max-w-[58ch] px-6 pt-[10vh]">
 	{#if s.phase === 'waiting'}
-		<button class="relative block w-full cursor-copy text-left text-2xl break-all" onclick={copy}>
-			{s.link}
-			{#if copied}<Mark kind="underline" seed={seed + 1} class="inset-x-0 -bottom-2 h-2 w-full" />{/if}
-		</button>
+		<div class="relative">
+			<button class="relative block w-full cursor-copy text-left text-2xl break-all" onclick={copy}>
+				{s.link}
+				{#if copied}<Mark kind="underline" seed={seed + 1} class="inset-x-0 -bottom-2 h-2 w-full" />{/if}
+			</button>
+			<p
+				class="mt-3 flex items-end gap-1 font-fine text-lg text-marker lg:absolute lg:top-0 lg:left-[calc(100%+0.5rem)] lg:mt-0 lg:w-48 lg:items-start"
+			>
+				<Pointer seed={seed + 7} up class="inline-block h-10 w-10 lg:hidden" />
+				<Pointer seed={seed + 7} class="hidden h-8 w-14 shrink-0 lg:inline-block" />
+				<span class="lg:mt-5"
+					>{#if copied}copied{:else}<span class="pointer-coarse:hidden">click to copy</span><span
+							class="hidden pointer-coarse:inline">tap to copy</span
+						>{/if}</span
+				>
+			</p>
+		</div>
 		<div class="mt-10 flex flex-wrap items-end gap-10">
 			<div><Qr text={s.link} /></div>
 			<ul class="space-y-1 text-lg">
