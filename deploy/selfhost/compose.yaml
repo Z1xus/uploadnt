@@ -1,0 +1,25 @@
+include:
+  - relay/compose.yaml
+
+services:
+  lobby:
+    image: localhost/uploadnt-lobby:latest
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    secrets: [turn_secret]
+    environment:
+      TURN_URLS: turn:turn.uploadnt.com:3478?transport=udp,turn:turn.uploadnt.com:3478?transport=tcp
+      TURN_SECRET_FILE: /run/secrets/turn_secret
+    restart: unless-stopped
+
+  tunnel:
+    image: docker.io/cloudflare/cloudflared:2026.9.3
+    command: tunnel --no-autoupdate run
+    env_file: [tunnel.env]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on: [lobby]
+    restart: unless-stopped

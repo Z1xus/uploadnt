@@ -77,7 +77,11 @@ fn paired(app: &App, mailbox: &str) -> bool {
 }
 
 async fn turn(Path(mailbox): Path<String>, State(app): State<App>) -> Response {
-    let (Ok(urls), Ok(secret)) = (std::env::var("TURN_URLS"), std::env::var("TURN_SECRET")) else {
+    let secret = std::env::var("TURN_SECRET").ok().or_else(|| {
+        let file = std::fs::read_to_string(std::env::var("TURN_SECRET_FILE").ok()?).ok()?;
+        Some(file.trim().to_owned())
+    });
+    let (Ok(urls), Some(secret)) = (std::env::var("TURN_URLS"), secret) else {
         return (StatusCode::NOT_FOUND, "no plan b here").into_response();
     };
     if !paired(&app, &mailbox) {
