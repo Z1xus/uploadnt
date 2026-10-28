@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const [site = "https://uploadnt.com", repo] = process.argv.slice(2);
+const [site = "https://uploadnt.com", repo = "Z1xus/uploadnt"] = process.argv.slice(2);
 const sha = (data: ArrayBuffer | string) =>
   createHash("sha256")
     .update(typeof data === "string" ? data : new Uint8Array(data))
@@ -41,7 +41,7 @@ const problems = [
     "commit header differs from provenance.json",
 ].filter(Boolean);
 
-if (repo && !problems.length) {
+if (!problems.length) {
   const path = join(tmpdir(), `uploadnt-bundle-${bundle}.txt`);
   writeFileSync(path, served);
   const gh = Bun.spawnSync(

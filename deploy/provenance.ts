@@ -40,7 +40,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `connect-src 'self' wss: https://rtc.live.cloudflare.com ${stats}`,
   "img-src 'self' data: blob:",
-  "worker-src 'self'",
+  "worker-src 'self' blob:",
   "base-uri 'none'",
   "form-action 'none'",
   "frame-ancestors 'none'",

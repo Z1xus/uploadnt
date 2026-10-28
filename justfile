@@ -10,11 +10,13 @@ dev: core
 lobby:
     cargo run -p lobby --release
 
-serve: web lobby
+serve: web
+    bun deploy/provenance.ts web/build
+    just lobby
 
 deploy: web
     bun deploy/provenance.ts web/build
     cd deploy && bunx wrangler deploy
 
-verify url="https://uploadnt.com" repo="":
+verify url="https://uploadnt.com" repo="Z1xus/uploadnt":
     bun deploy/verify.ts {{url}} {{repo}}

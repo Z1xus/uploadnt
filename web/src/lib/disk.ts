@@ -1,3 +1,4 @@
+import DiskWorker from './disk.worker.ts?worker&inline';
 import type { JsFile } from './core';
 
 export interface Sink {
@@ -39,6 +40,8 @@ async function handleFor(target: Target, name: string) {
 	return target?.kind === 'directory' ? target.getFileHandle(name, { create: true }) : target!;
 }
 
+const KEEP_MS = 24 * 3600_000;
+
 async function staging() {
 	return navigator.storage.getDirectory();
 }
@@ -48,16 +51,18 @@ export async function sweep() {
 	if (!root) return;
 	for await (const [name, entry] of root.entries()) {
 		if (entry.kind !== 'directory') continue;
-		const done = await entry.getFileHandle('delivered').then(
-			() => true,
-			() => false
-		);
-		if (done) await root.removeEntry(name, { recursive: true }).catch(() => {});
+		const delivered = await entry
+			.getFileHandle('delivered')
+			.then((h) => h.getFile())
+			.catch(() => undefined);
+		// a blocked or cancelled download can still be retried from the link for a day
+		if (delivered && Date.now() - delivered.lastModified > KEEP_MS)
+			await root.removeEntry(name, { recursive: true }).catch(() => {});
 	}
 }
 
 class Staged implements Sink {
-	private worker = new Worker(new URL('./disk.worker.ts', import.meta.url), { type: 'module' });
+	private worker = new DiskWorker();
 	private calls = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 	private next = 0;
 	private root = '';
