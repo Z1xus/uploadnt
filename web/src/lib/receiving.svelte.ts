@@ -9,7 +9,9 @@ import { Rate } from './rate';
 type Phase = 'connecting' | 'ask' | 'offered' | 'receiving' | 'done' | 'failed';
 
 const TICK_MS = 1000;
-const UNREACHABLE_MS = 20_000;
+// direct usually connects within 1 to 3 s of meeting, a relay can take longer
+const DIRECT_MS = 5_000;
+const RELAY_MS = 20_000;
 
 export class Receiving {
 	phase = $state<Phase>('connecting');
@@ -73,7 +75,7 @@ export class Receiving {
 	planb() {
 		this.relay = true;
 		this.phase = 'connecting';
-		this.reach_timer = setTimeout(() => this.unreachable(), UNREACHABLE_MS);
+		this.reach_timer = setTimeout(() => this.unreachable(), RELAY_MS);
 		this.lobby?.reconnect();
 	}
 
@@ -136,7 +138,7 @@ export class Receiving {
 		this.met = true;
 		this.alone = false;
 		clearTimeout(this.alone_timer);
-		this.reach_timer ??= setTimeout(() => this.unreachable(), UNREACHABLE_MS);
+		this.reach_timer ??= setTimeout(() => this.unreachable(), DIRECT_MS);
 		const old = this.attempt;
 		this.attempt = undefined;
 		old?.close();
