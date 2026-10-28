@@ -6,3 +6,4 @@ node_modules
 .wrangler
 /crates/lobby/build
 /deploy/dist
+/deploy/relay/turn_secret

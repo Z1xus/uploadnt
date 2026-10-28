@@ -1,0 +1,24 @@
+services:
+  coturn:
+    image: docker.io/coturn/coturn:4.18.0-alpine
+    network_mode: host
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    # turnserver ships with a file capability for low ports we never use, and without it the kernel won't even exec the thing :(
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp, /var/lib/coturn]
+    secrets: [turn_secret]
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro,Z
+    # keeps the secret out of the process arguments
+    entrypoint:
+      - sh
+      - -c
+      - cp /etc/coturn/turnserver.conf /tmp/turnserver.conf && printf 'static-auth-secret=%s\n' "$$(cat /run/secrets/turn_secret)" >> /tmp/turnserver.conf && exec turnserver -c /tmp/turnserver.conf
+    restart: unless-stopped
+
+secrets:
+  turn_secret:
+    file: ./turn_secret
