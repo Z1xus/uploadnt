@@ -20,132 +20,122 @@
 }
 
 @theme inline {
-	--color-paper: var(--paper);
-	--color-ink: var(--ink);
-	--color-marker: var(--marker);
-	--color-graphite: var(--graphite);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-accent: var(--accent);
+	--color-muted: var(--muted);
 	--font-sans: Karrik, ui-sans-serif, sans-serif;
-	--font-fine: Redaction, Karrik, serif;
+	--font-serif: Redaction, Karrik, serif;
+}
+
+@theme {
+	--animate-fade-in: fade-in 200ms ease-out both;
+	--animate-draw: draw 160ms ease-in-out forwards;
+	--animate-wipe: wipe 300ms ease-out forwards;
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes draw {
+		from {
+			opacity: 1;
+		}
+		to {
+			opacity: 1;
+			stroke-dashoffset: 0;
+		}
+	}
+	@keyframes wipe {
+		to {
+			clip-path: inset(-100% -5% -100% -5%);
+		}
+	}
 }
 
 :root {
-	--paper: #f3efe6;
-	--ink: #15130f;
-	--marker: #e0312b;
-	--graphite: #8a847a;
+	color-scheme: light dark;
+	--background: light-dark(#f3efe6, #0f0e0c);
+	--foreground: light-dark(#15130f, #ece7dc);
+	--accent: light-dark(#e0312b, #ff4f47);
+	--muted: light-dark(#8a847a, #8f897f);
 	--bleed: 0.3px;
+}
+
+:root[data-theme='light'] {
 	color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--bleed: 0;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--paper: #0f0e0c;
-		--ink: #ece7dc;
-		--marker: #ff4f47;
-		--graphite: #8f897f;
 		--bleed: 0;
-		color-scheme: dark;
 	}
 }
 
-:root[data-theme='dark'] {
-	--paper: #0f0e0c;
-	--ink: #ece7dc;
-	--marker: #ff4f47;
-	--graphite: #8f897f;
-	--bleed: 0;
-	color-scheme: dark;
+@layer base {
+	html {
+		background: var(--color-background);
+		color: var(--color-foreground);
+		font-family: var(--font-sans);
+		font-variant-numeric: proportional-nums;
+		text-underline-offset: 0.25em;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	button {
+		cursor: pointer;
+	}
+
+	::selection {
+		background: var(--color-accent);
+		color: var(--color-background);
+	}
 }
 
-html {
-	background: var(--paper);
-	color: var(--ink);
-	font-family: var(--font-sans);
-	font-variant-numeric: proportional-nums;
-	-webkit-font-smoothing: antialiased;
-}
-
-::selection {
-	background: var(--marker);
-	color: var(--paper);
-}
-
-.bleed {
-	filter: blur(var(--bleed));
-}
-
-.mark path,
-.scrawl path {
-	fill: none;
-	stroke: var(--marker);
-	stroke-linecap: round;
-	stroke-linejoin: round;
-}
-
-/* firefox forgets pathLength once vector-effect is on, so marks get wiped in with a clip instead of drawn. fuck you firefox */
-.mark {
-	clip-path: inset(-100% 105% -100% -5%);
-	animation: wipe 300ms ease-out forwards;
-	animation-delay: var(--delay, 0ms);
-}
-
-.stamp {
-	animation: fade 200ms ease-out both;
+@utility badge {
+	display: inline-block;
+	border: 3px solid var(--color-accent);
+	padding: 0.1em 0.6em;
+	color: var(--color-accent);
+	animation: var(--animate-fade-in);
 }
 
 /* a dash of length zero still gets a round cap, so every stroke that hasn't started yet is a little red dot. i hate it */
-.scrawl path {
+@utility draw-in {
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 	opacity: 0;
-	animation: draw 160ms ease-in-out forwards;
+	animation: var(--animate-draw);
 	animation-delay: var(--delay, 0ms);
-}
 
-@keyframes draw {
-	from {
-		opacity: 1;
-	}
-	to {
-		opacity: 1;
+	@media (prefers-reduced-motion: reduce) {
 		stroke-dashoffset: 0;
-	}
-}
-
-@keyframes wipe {
-	to {
-		clip-path: inset(-100% -5% -100% -5%);
-	}
-}
-
-@keyframes fade {
-	from {
-		opacity: 0;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.scrawl path {
 		opacity: 1;
-		stroke-dashoffset: 0;
+		animation: var(--animate-fade-in);
 	}
-	.mark,
-	.scrawl path {
+}
+
+/* firefox forgets pathLength once vector-effect is on, so marks get wiped in with a clip instead of drawn. fuck you firefox */
+@utility wipe-in {
+	clip-path: inset(-100% 105% -100% -5%);
+	animation: var(--animate-wipe);
+	animation-delay: var(--delay, 0ms);
+
+	@media (prefers-reduced-motion: reduce) {
 		clip-path: none;
-		animation: fade 300ms ease-out both;
-	}
-	.stamp {
-		animation: none;
+		animation: var(--animate-fade-in);
 	}
 }
 
-.halo text {
-	paint-order: stroke;
-	stroke: var(--paper);
+@utility text-outline {
+	stroke: var(--color-background);
 	stroke-width: 10px;
 	stroke-linejoin: round;
-}
-
-.hold * {
-	animation-play-state: paused;
+	paint-order: stroke;
 }

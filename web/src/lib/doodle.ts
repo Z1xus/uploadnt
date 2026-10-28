@@ -2,7 +2,7 @@ import { jitter, random, smooth, type Point } from './marker';
 
 export type { Point };
 
-export type Tone = 'ink' | 'red' | 'faint';
+export type Tone = 'foreground' | 'accent' | 'muted';
 export type Stroke = { d: string; tone: Tone };
 export type Step = { from: number; to: number; label: string; tone?: Tone };
 
@@ -11,10 +11,10 @@ export const SEQ_ROW = 34;
 export function pen(seed: number) {
 	const rand = random(seed);
 	const strokes: Stroke[] = [];
-	const add = (points: Point[], tone: Tone = 'ink', wobble = 2.5) =>
+	const add = (points: Point[], tone: Tone = 'foreground', wobble = 2.5) =>
 		strokes.push({ d: smooth(jitter(points, rand, wobble)), tone });
 
-	const line = (a: Point, b: Point, tone: Tone = 'ink') =>
+	const line = (a: Point, b: Point, tone: Tone = 'foreground') =>
 		add(
 			Array.from({ length: 5 }, (_, i) => [a[0] + ((b[0] - a[0]) * i) / 4, a[1] + ((b[1] - a[1]) * i) / 4]),
 			tone
@@ -27,11 +27,11 @@ export function pen(seed: number) {
 				const k = bumps && i % 2 ? 1.25 : 1;
 				return [cx + Math.cos(a) * r * k * 1.3, cy + Math.sin(a) * r * k];
 			}),
-			'ink',
+			'foreground',
 			bumps ? 4 : 2
 		);
 
-	const arrow = (points: Point[], tone: Tone = 'ink', wobble = 6) => {
+	const arrow = (points: Point[], tone: Tone = 'foreground', wobble = 6) => {
 		add(points, tone, wobble);
 		const [[x0, y0], [x1, y1]] = points.slice(-2);
 		const a = Math.atan2(y1 - y0, x1 - x0);
@@ -55,7 +55,7 @@ export function pen(seed: number) {
 						[x, 89],
 						[x + 4, 92]
 					],
-			'ink',
+			'foreground',
 			0.8
 		);
 		line([x, 98], [x, 128]);
@@ -74,7 +74,7 @@ export function pen(seed: number) {
 				[x, y + 26],
 				[x, y]
 			],
-			'ink',
+			'foreground',
 			1.5
 		);
 		line([x + 4, y + 11], [x + 16, y + 11]);
@@ -111,7 +111,7 @@ export function doodle(kind: 'corp' | 'direct' | 'planb', seed: number) {
 				[160, 96],
 				[262, 106]
 			],
-			'red'
+			'accent'
 		);
 		p.paper(148, 66);
 		p.ring(296, 22, 9);
@@ -129,7 +129,7 @@ export function doodle(kind: 'corp' | 'direct' | 'planb', seed: number) {
 				[100, 102],
 				[136, 100]
 			],
-			'red'
+			'accent'
 		);
 		p.arrow(
 			[
@@ -137,7 +137,7 @@ export function doodle(kind: 'corp' | 'direct' | 'planb', seed: number) {
 				[224, 102],
 				[262, 106]
 			],
-			'red'
+			'accent'
 		);
 		p.line([138, 80], [182, 80]);
 		p.line([182, 80], [182, 120]);
@@ -163,7 +163,7 @@ export function sequence(lanes: number, steps: Step[], seed: number) {
 				[x(i), (26 + bottom) / 2],
 				[x(i), bottom]
 			],
-			'faint',
+			'muted',
 			2
 		);
 	steps.forEach((s, k) => {

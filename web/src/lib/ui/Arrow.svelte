@@ -19,11 +19,11 @@
 	);
 	const strokes = $derived.by(() => {
 		const p = pen(seed);
-		p.arrow(points, 'red', 2);
+		p.arrow(points, 'accent', 2);
 		return p.strokes;
 	});
 </script>
 
-<svg class="scrawl overflow-visible {cls}" viewBox={up ? '0 0 50 50' : '0 0 60 36'} aria-hidden="true">
+<svg class="overflow-visible {cls}" viewBox={up ? '0 0 50 50' : '0 0 60 36'} aria-hidden="true">
 	<Strokes {strokes} width={2.5} step={120} delay={600} />
 </svg>

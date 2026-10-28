@@ -32,11 +32,7 @@
 <svelte:window onhashchange={() => location.reload()} />
 
 {#await ready}
-	{#if fragment}
-		<main class="relative mx-auto max-w-[36rem] px-6 pt-[10vh]">
-			<p class="text-2xl text-graphite">connecting…</p>
-		</main>
-	{/if}
+	{#if fragment}<p class="text-2xl text-muted">connecting…</p>{/if}
 {:then}
 	{#if receiving}
 		<Receive r={receiving} {fragment} />

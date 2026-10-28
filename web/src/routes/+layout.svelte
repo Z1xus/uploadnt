@@ -3,6 +3,7 @@
 	import type { Snippet } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -37,19 +38,15 @@
 	}
 </script>
 
-<div class="flex min-h-dvh flex-col transition-opacity duration-200 {shown ? '' : 'hold opacity-0'}">
-	<div class="flex-1">{@render children()}</div>
-	<footer
-		class="mx-auto flex w-full max-w-[36rem] flex-wrap gap-x-4 gap-y-1 px-6 pt-16 pb-6 font-fine text-base text-graphite"
-	>
-		<a href="https://z1x.us/" class="mr-auto underline-offset-2 hover:underline"
-			>provided to you by an individual with hatred in heart</a
-		>
-		<span class="flex gap-x-4">
-			<a href="/rest" class="underline-offset-2 hover:underline">the rest</a>
-			<button class="cursor-pointer underline-offset-2 hover:underline" onclick={toggle}
-				>{isDark ? 'light' : 'dark'}</button
+{#if shown}
+	<div class="mx-auto flex min-h-dvh max-w-xl flex-col px-6" transition:fade={{ duration: 200 }}>
+		<main class="relative flex-1 pt-[10dvh]">{@render children()}</main>
+		<footer class="flex flex-wrap gap-x-4 gap-y-1 pt-16 pb-6 font-serif text-muted">
+			<a href="https://z1x.us/" class="mr-auto hover:underline"
+				>provided to you by an individual with hatred in heart</a
 			>
-		</span>
-	</footer>
-</div>
+			<a href="/rest" class="hover:underline">the rest</a>
+			<button class="hover:underline" onclick={toggle}>{isDark ? 'light' : 'dark'}</button>
+		</footer>
+	</div>
+{/if}

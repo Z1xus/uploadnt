@@ -5,7 +5,7 @@
 
 	const SOURCE = 'https://github.com/Z1xus/uploadnt';
 	const stats = import.meta.env.PUBLIC_IMPACTITE;
-	const link = 'underline underline-offset-4';
+	const link = 'underline';
 
 	const refs: Record<string, string> = {
 		sri: 'https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity',
@@ -65,7 +65,7 @@
 			lanes: ['sender', 'receiver'],
 			steps: [
 				{ from: 0, to: 0, label: '128 random bits' },
-				{ from: 0, to: 1, label: 'uploadnt.com/#secret', tone: 'red' }
+				{ from: 0, to: 1, label: 'uploadnt.com/#secret', tone: 'accent' }
 			]
 		},
 		{
@@ -86,8 +86,8 @@
 			steps: [
 				{ from: 0, to: 2, label: 'spake2 message' },
 				{ from: 2, to: 0, label: 'spake2 message' },
-				{ from: 0, to: 0, label: 'keys', tone: 'red' },
-				{ from: 2, to: 2, label: 'same keys', tone: 'red' }
+				{ from: 0, to: 0, label: 'keys', tone: 'accent' },
+				{ from: 2, to: 2, label: 'same keys', tone: 'accent' }
 			]
 		},
 		{
@@ -104,9 +104,9 @@
 			text: 'the browsers open 4 negotiated webrtc data channels and stripe the data across them, with backpressure at 4 mib. ice first tries direct paths with stun only. if nothing connects within 5 seconds, the receiver is asked, and turn is added only if they agree. turn relays the same encrypted frames.',
 			lanes: ['sender', 'plan b', 'receiver'],
 			steps: [
-				{ from: 0, to: 2, label: '4 data channels, direct', tone: 'red' },
-				{ from: 0, to: 1, label: 'only after yes', tone: 'faint' },
-				{ from: 1, to: 2, label: 'same frames', tone: 'faint' }
+				{ from: 0, to: 2, label: '4 data channels, direct', tone: 'accent' },
+				{ from: 0, to: 1, label: 'only after yes', tone: 'muted' },
+				{ from: 1, to: 2, label: 'same frames', tone: 'muted' }
 			]
 		},
 		{
@@ -124,7 +124,7 @@
 			lanes: ['sender', 'receiver'],
 			steps: [
 				{ from: 1, to: 0, label: 'want these chunks' },
-				{ from: 0, to: 1, label: 'sealed 64 kib pieces', tone: 'red' },
+				{ from: 0, to: 1, label: 'sealed 64 kib pieces', tone: 'accent' },
 				{ from: 1, to: 1, label: 'check blake3' },
 				{ from: 1, to: 0, label: 'got it' }
 			]
@@ -136,7 +136,7 @@
 			steps: [
 				{ from: 0, to: 1, label: 'write chunk' },
 				{ from: 0, to: 1, label: 'bitmap, every 16 chunks' },
-				{ from: 1, to: 0, label: 'after a reload: resume', tone: 'faint' }
+				{ from: 1, to: 0, label: 'after a reload: resume', tone: 'muted' }
 			]
 		},
 		{
@@ -145,18 +145,18 @@
 			lanes: ['sender', 'receiver', 'disk'],
 			steps: [
 				{ from: 1, to: 2, label: 'save the file' },
-				{ from: 1, to: 0, label: 'done + root hash', tone: 'red' }
+				{ from: 1, to: 0, label: 'done + root hash', tone: 'accent' }
 			]
 		}
 	];
 </script>
 
-<main class="mx-auto max-w-[36rem] space-y-6 px-6 pt-[10vh] text-lg leading-relaxed">
+<article class="space-y-6 text-lg leading-relaxed">
 	<p>this is how sending a file usually works:</p>
 	<Doodle kind="corp" seed={11} label="you, a big corp in a cloud holding your file, and your friend" />
 	<p>
 		you give your file to a big company, they pass it on to your friend, and they keep a copy for themselves
-		that they can look at whenever they want. <span class="text-marker"
+		that they can look at whenever they want. <span class="text-accent"
 			>bad!!! the corporation has your data!</span
 		>
 	</p>
@@ -194,19 +194,21 @@
 	</p>
 	<details>
 		<summary
-			class="inline-block cursor-pointer list-none border-[3px] border-marker px-3 py-0.5 text-marker hover:bg-marker hover:text-paper [&::-webkit-details-marker]:hidden"
+			class="badge cursor-pointer list-none hover:bg-accent hover:text-background [&::-webkit-details-marker]:hidden"
 			>i'm a nerd</summary
 		>
-		<ol class="mt-6 space-y-8 text-base text-graphite">
+		<ol class="mt-6 space-y-8 text-base text-muted">
 			{#each nerd as n, i}
 				<li id={n.title.replaceAll(' ', '-')} class="scroll-mt-8">
 					<h3>
-						<a href="#{n.title.replaceAll(' ', '-')}" class="flex items-baseline gap-3 text-xl text-ink"
-							><span class="font-fine text-marker">{String(i + 1).padStart(2, '0')}</span>{n.title}</a
+						<a
+							href="#{n.title.replaceAll(' ', '-')}"
+							class="flex items-baseline gap-3 text-xl text-foreground"
+							><span class="font-serif text-accent">{String(i + 1).padStart(2, '0')}</span>{n.title}</a
 						>
 					</h3>
 					<p class="mt-2">
-						{#each linked(n.text) as t}{#if t.href}<a href={t.href} class="{link} decoration-graphite/50"
+						{#each linked(n.text) as t}{#if t.href}<a href={t.href} class="{link} decoration-muted/50"
 									>{t.part}</a
 								>{:else}{t.part}{/if}{/each}
 					</p>
@@ -216,4 +218,4 @@
 		</ol>
 	</details>
 	<p><a href="/" class={link}>back</a></p>
-</main>
+</article>

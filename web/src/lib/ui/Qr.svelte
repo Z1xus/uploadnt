@@ -11,7 +11,7 @@
 
 <svg
 	viewBox="0 0 {qr.size} {qr.size}"
-	class="h-40 w-40 fill-ink"
+	class="h-40 w-40 fill-foreground"
 	shape-rendering="crispEdges"
 	role="img"
 	aria-label="qr code of the link"

@@ -1,29 +1,38 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { strike, underline } from '#lib/marker.ts';
 
 	let {
-		kind = 'strike',
+		kind,
 		seed,
-		width = 3,
 		delay = 0,
-		class: cls = ''
+		show = true,
+		children
 	}: {
-		kind?: 'strike' | 'underline';
+		kind: 'strike' | 'underline';
 		seed: number;
-		width?: number;
 		delay?: number;
-		class?: string;
+		show?: boolean;
+		children: Snippet;
 	} = $props();
-
-	const d = $derived(kind === 'strike' ? strike(seed) : underline(seed));
 </script>
 
-<svg
-	class="mark pointer-events-none absolute overflow-visible {cls}"
-	viewBox={kind === 'strike' ? '0 0 100 20' : '0 0 100 10'}
-	preserveAspectRatio="none"
-	aria-hidden="true"
-	style:--delay="{delay}ms"
+<span class="relative inline-block"
+	>{@render children()}{#if show}<svg
+			class="pointer-events-none absolute inset-x-0 w-full wipe-in overflow-visible {kind === 'strike'
+				? 'top-[22%] h-[56%]'
+				: '-bottom-2 h-2'}"
+			viewBox={kind === 'strike' ? '0 0 100 20' : '0 0 100 10'}
+			preserveAspectRatio="none"
+			aria-hidden="true"
+			style:--delay="{delay}ms"
+			><path
+				d={kind === 'strike' ? strike(seed) : underline(seed)}
+				class="stroke-accent"
+				fill="none"
+				stroke-width="3"
+				stroke-linecap="round"
+				vector-effect="non-scaling-stroke"
+			/></svg
+		>{/if}</span
 >
-	<path {d} stroke-width={width} vector-effect="non-scaling-stroke" />
-</svg>

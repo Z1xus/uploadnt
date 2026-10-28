@@ -8,15 +8,15 @@
 </script>
 
 <svg
-	class="scrawl my-2 block w-full max-w-md overflow-visible"
+	class="my-2 block w-full max-w-md overflow-visible"
 	viewBox="0 0 320 {seq.height}"
 	role="img"
 	aria-label={steps.map((s) => `${lanes[s.from]} to ${lanes[s.to]}: ${s.label}`).join('. ')}
 >
 	<Strokes strokes={seq.strokes} width={2} step={30} />
-	<g class="halo fill-ink font-fine text-[13px]">
+	<g class="fill-foreground text-outline font-serif text-[13px]">
 		{#each lanes as lane, i}
-			<text x={seq.x(i)} y="16" text-anchor="middle" class="text-[13px]">{lane}</text>
+			<text x={seq.x(i)} y="16" text-anchor="middle">{lane}</text>
 		{/each}
 		{#each steps as s, k}
 			{@const y = 56 + k * SEQ_ROW}
@@ -25,14 +25,14 @@
 					x={seq.x(s.from) + (s.from === lanes.length - 1 ? -24 : 24)}
 					y={y + 2}
 					text-anchor={s.from === lanes.length - 1 ? 'end' : 'start'}
-					class={s.tone === 'faint' ? 'fill-graphite' : ''}>{s.label}</text
+					class={s.tone === 'muted' ? 'fill-muted' : ''}>{s.label}</text
 				>
 			{:else}
 				<text
 					x={(seq.x(s.from) + seq.x(s.to)) / 2}
 					y={y - 11}
 					text-anchor="middle"
-					class={s.tone === 'red' ? 'fill-marker' : s.tone === 'faint' ? 'fill-graphite' : ''}>{s.label}</text
+					class={s.tone === 'accent' ? 'fill-accent' : s.tone === 'muted' ? 'fill-muted' : ''}>{s.label}</text
 				>
 			{/if}
 		{/each}
