@@ -13,7 +13,12 @@
 
 	let isDark = $state(dark());
 	let shown = $state(false);
-	onMount(() => document.fonts.ready.then(() => (shown = true)));
+	// nothing is on screen yet, so fonts.ready alone would resolve before any font starts loading
+	onMount(() =>
+		Promise.all([document.fonts.load('1em Karrik'), document.fonts.load('1em Redaction')]).finally(
+			() => (shown = true)
+		)
+	);
 
 	const stats = import.meta.env.PUBLIC_IMPACTITE;
 	afterNavigate(({ from }) => {
