@@ -1,0 +1,8 @@
+{
+  "name": "@uploadnt/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "pkg/core.js",
+  "types": "pkg/core.d.ts",
+  "sideEffects": false
+}

@@ -1,0 +1,6 @@
+/target
+node_modules
+/packages/core/pkg
+/web/build
+/web/.svelte-kit
+.wrangler
