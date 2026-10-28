@@ -154,17 +154,21 @@ export class Sending {
 		const attempt = new Attempt(this.secret, true, this.lobby!, peer);
 		this.attempt = attempt;
 		peer.onopen = async () => {
-			const builder = await this.manifest;
-			if (this.attempt !== attempt) return;
-			this.session = attempt.keys!.sender(builder);
-			this.path = await peer.path();
-			this.flush();
-		};
-		peer.onmessage = (msg) => {
-			if (this.attempt !== attempt || !this.session) return;
 			try {
-				this.session.handle(msg);
-				this.events();
+				const builder = await this.manifest;
+				if (this.attempt !== attempt) return;
+				this.session = attempt.keys!.sender(builder);
+				peer.onmessage = (msg) => {
+					if (this.attempt !== attempt || !this.session) return;
+					try {
+						this.session.handle(msg);
+						this.events();
+					} catch (err) {
+						this.fail(err);
+					}
+				};
+				this.path = await peer.path();
+				this.flush();
 			} catch (err) {
 				this.fail(err);
 			}

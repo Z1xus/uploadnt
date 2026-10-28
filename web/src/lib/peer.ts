@@ -28,7 +28,6 @@ export function relayServers() {
 
 export class Peer {
 	onopen = () => {};
-	onmessage = (_: Uint8Array) => {};
 	onclose = () => {};
 
 	private pc?: RTCPeerConnection;
@@ -38,6 +37,8 @@ export class Peer {
 	private waiters: (() => void)[] = [];
 	private signals: Signal[] = [];
 	private sink?: (signal: Signal) => void;
+	private inbox: Uint8Array[] = [];
+	private reader?: (msg: Uint8Array) => void;
 	private dead = false;
 	private started?: Promise<void>;
 
@@ -45,6 +46,12 @@ export class Peer {
 		private offerer: boolean,
 		private relayed = false
 	) {}
+
+	// messages can arrive before the other channels open and before the session exists
+	set onmessage(reader: (msg: Uint8Array) => void) {
+		this.reader = reader;
+		this.inbox.splice(0).forEach(reader);
+	}
 
 	set onsignal(sink: (signal: Signal) => void) {
 		this.sink = sink;
@@ -75,7 +82,11 @@ export class Peer {
 			ch.bufferedAmountLowThreshold = LOW;
 			ch.onopen = () => ++this.open === CHANNELS && this.onopen();
 			ch.onclose = () => this.close();
-			ch.onmessage = (e) => this.onmessage(new Uint8Array(e.data));
+			ch.onmessage = (e) => {
+				const msg = new Uint8Array(e.data);
+				if (this.reader) this.reader(msg);
+				else this.inbox.push(msg);
+			};
 			ch.onbufferedamountlow = () => this.wake();
 			this.channels.push(ch);
 		}

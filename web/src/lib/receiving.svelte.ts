@@ -145,20 +145,24 @@ export class Receiving {
 		const attempt = new Attempt(this.link!.secret, false, this.lobby!, peer, this.relay);
 		this.attempt = attempt;
 		peer.onopen = async () => {
-			clearTimeout(this.reach_timer);
-			this.reach_timer = undefined;
-			this.session = attempt.keys!.receiver();
-			// phones with 2 GB or less cannot hold 32 chunks in flight
-			if ('deviceMemory' in navigator && (navigator.deviceMemory as number) <= 2)
-				this.session.setMaxWindow(8);
-			this.path = await peer.path();
-			this.flush();
-		};
-		peer.onmessage = (msg) => {
-			if (this.attempt !== attempt || !this.session) return;
 			try {
-				this.session.handle(msg, performance.now());
-				this.events();
+				clearTimeout(this.reach_timer);
+				this.reach_timer = undefined;
+				this.session = attempt.keys!.receiver();
+				// phones with 2 GB or less cannot hold 32 chunks in flight
+				if ('deviceMemory' in navigator && (navigator.deviceMemory as number) <= 2)
+					this.session.setMaxWindow(8);
+				peer.onmessage = (msg) => {
+					if (this.attempt !== attempt || !this.session) return;
+					try {
+						this.session.handle(msg, performance.now());
+						this.events();
+					} catch (err) {
+						this.fail(grievanceOf(err));
+					}
+				};
+				this.path = await peer.path();
+				this.flush();
 			} catch (err) {
 				this.fail(grievanceOf(err));
 			}
