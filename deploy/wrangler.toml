@@ -27,5 +27,5 @@ new_sqlite_classes = ["Room"]
 tag = "v2"
 new_sqlite_classes = ["Tally"]
 
-# set TURN_KEY_ID here and TURN_KEY_API_TOKEN with `wrangler secret put` to turn plan b on
+# plan b: TURN_KEY_ID here plus the TURN_KEY_API_TOKEN secret for cloudflare, or TURN_URLS here plus the TURN_SECRET secret for coturn
 [vars]

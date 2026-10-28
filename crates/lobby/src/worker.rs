@@ -1,9 +1,7 @@
 use uploadnt_core::Lobby;
 use worker::*;
 
-use crate::{MAX_MESSAGE, Stats, encode, valid_mailbox};
-
-const TURN_TTL_SECS: u32 = 12 * 3600;
+use crate::{MAX_MESSAGE, Stats, TURN_TTL_SECS, coturn_credentials, encode, valid_mailbox};
 
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
@@ -23,6 +21,13 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 }
 
 async fn turn(env: &Env) -> Result<Response> {
+    if let (Ok(urls), Ok(secret)) = (env.var("TURN_URLS"), env.secret("TURN_SECRET")) {
+        let body = coturn_credentials(&urls.to_string(), &secret.to_string(), Date::now().as_millis() / 1000);
+        let mut out = Response::ok(body)?;
+        out.headers_mut().set("Content-Type", "application/json")?;
+        out.headers_mut().set("Cache-Control", "no-store")?;
+        return Ok(out);
+    }
     let (Ok(id), Ok(token)) = (env.var("TURN_KEY_ID"), env.secret("TURN_KEY_API_TOKEN")) else {
         return Response::error("no plan b here", 404);
     };
