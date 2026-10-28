@@ -263,6 +263,10 @@ impl ReceiverSession {
         self.0.written(chunk, now as u64)
     }
 
+    pub fn complete(&mut self) {
+        self.0.complete()
+    }
+
     pub fn tick(&mut self, now: f64) {
         self.0.tick(now as u64)
     }

@@ -92,7 +92,7 @@ fn moves_a_gigabyte_through_a_hostile_transport() {
                         written_this_session += 1;
                     }
                     Event::Progress { .. } => {}
-                    Event::Done => {}
+                    Event::Done => receiver.complete(),
                     other => panic!("receiver got {other:?}"),
                 }
             }

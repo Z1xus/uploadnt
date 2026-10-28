@@ -216,6 +216,12 @@ impl Receiver {
         }
     }
 
+    pub fn complete(&mut self) {
+        if let Some(manifest) = self.manifest.as_ref().filter(|_| self.done) {
+            self.link.send(&Frame::Done(manifest.root()));
+        }
+    }
+
     pub fn close(&mut self, reason: &str) {
         self.link.send(&Frame::Bye(reason.into()));
     }
@@ -284,7 +290,6 @@ impl Receiver {
         }
         if self.have.is_full() {
             self.done = true;
-            self.link.send(&Frame::Done(manifest.root()));
             self.link.events.push_back(Event::Done);
             return;
         }
