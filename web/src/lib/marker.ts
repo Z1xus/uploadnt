@@ -1,4 +1,4 @@
-type Point = [number, number];
+export type Point = [number, number];
 
 export function random(seed: number) {
 	return () => {
@@ -15,7 +15,7 @@ export function seedOf(text: string) {
 	return h >>> 0;
 }
 
-function smooth(points: Point[]) {
+export function smooth(points: Point[]) {
 	const f = (n: number) => n.toFixed(1);
 	let d = `M${f(points[0][0])} ${f(points[0][1])}`;
 	for (let i = 0; i < points.length - 1; i++) {
@@ -32,7 +32,7 @@ function smooth(points: Point[]) {
 	return d;
 }
 
-function jitter(points: Point[], rand: () => number, amount: number): Point[] {
+export function jitter(points: Point[], rand: () => number, amount: number): Point[] {
 	return points.map(([x, y]) => [x + (rand() - 0.5) * amount, y + (rand() - 0.5) * amount]);
 }
 
