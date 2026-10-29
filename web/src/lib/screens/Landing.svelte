@@ -61,7 +61,6 @@
 
 	<Aside>
 		<p>send a file directly, with no third parties and no uploads.</p>
-		<p>keep this tab open until they've got it.</p>
 		{#if planb !== undefined}
 			<p>{planb}% of transfers used plan b in the last 30 days.</p>
 		{/if}

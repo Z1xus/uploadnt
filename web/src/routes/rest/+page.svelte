@@ -157,10 +157,9 @@
 	<p>this is how sending a file usually works:</p>
 	<Doodle kind="corp" seed={11} label="you, a big corp in a cloud holding your file, and your friend" />
 	<p>
-		you give your file to a big company, they pass it on to your friend, and they keep a copy for themselves
-		that they can look at whenever they want. <span class="text-accent"
-			>bad!!! the corporation has your data!</span
-		>
+		you give your file to a big company, and they pass it on to your friend. they can keep a copy and look at
+		it whenever they want, and their privacy policy is only a promise you can't check. the only way to be sure
+		is to not give it to them at all. <span class="text-accent">bad!!! the corporation has your data!</span>
 	</p>
 	<Doodle kind="direct" seed={23} label="you and your friend with the file going straight between you" />
 	<p>
@@ -173,8 +172,8 @@
 		label="you and your friend with a blindfolded box called plan b between you"
 	/>
 	<p>
-		sometimes the two computers can't reach each other. when that happens we ask you first, and then the file
-		goes through our relay, plan b. it only sees scrambled bytes it can't read, and it doesn't keep them.
+		sometimes the two computers can't reach each other. in that case the file takes a detour through our
+		relay, plan b. it's end-to-end encrypted and isn't stored anywhere.
 	</p>
 	<p>
 		the key that unscrambles the file is the part of the link after the #. browsers don't send that part to
