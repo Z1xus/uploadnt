@@ -16,6 +16,8 @@ pub fn valid_mailbox(mailbox: &str) -> bool {
 }
 
 pub const TURN_TTL_SECS: u64 = 12 * 3600;
+// 8 connections, each side, udp and tcp, plus refreshes
+pub const TURNS_PER_ROOM: u32 = 40;
 const STATS_DAYS: u64 = 30;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]

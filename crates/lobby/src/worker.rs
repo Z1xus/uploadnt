@@ -9,8 +9,12 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     if path == "/stats" && req.method() == Method::Get {
         return tally(&env)?.fetch_with_request(req).await;
     }
-    match path.strip_prefix("/m/").map(|rest| rest.split_once('/').map_or(rest, |(mailbox, _)| mailbox)) {
-        Some(mailbox) if valid_mailbox(mailbox) => {
+    let mailbox = match path.strip_prefix("/m/").map(|rest| rest.split('/').collect::<Vec<_>>()).as_deref() {
+        Some([mailbox]) | Some([mailbox, "turn"]) => mailbox.to_string(),
+        _ => return Response::error("nothing here", 404),
+    };
+    match mailbox.as_str() {
+        mailbox if valid_mailbox(mailbox) => {
             env.durable_object("LOBBY")?.id_from_name(mailbox)?.get_stub()?.fetch_with_request(req).await
         }
         _ => Response::error("nothing here", 404),
@@ -74,6 +78,7 @@ impl DurableObject for Tally {
 pub struct Room {
     state: State,
     env: Env,
+    turns: std::cell::Cell<u32>,
 }
 
 impl Room {
@@ -105,13 +110,17 @@ impl Room {
 
 impl DurableObject for Room {
     fn new(state: State, env: Env) -> Self {
-        Self { state, env }
+        Self { state, env, turns: std::cell::Cell::new(0) }
     }
 
     async fn fetch(&self, req: Request) -> Result<Response> {
         if req.path().ends_with("/turn") {
             if self.state.get_websockets().len() != 2 {
                 return Response::error("nobody to relay for", 403);
+            }
+            self.turns.set(self.turns.get() + 1);
+            if self.turns.get() > crate::TURNS_PER_ROOM {
+                return Response::error("enough relay logins for this transfer", 429);
             }
             let path = req.path();
             return turn(&self.env, path.trim_start_matches("/m/").trim_end_matches("/turn")).await;

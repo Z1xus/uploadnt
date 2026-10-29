@@ -10,13 +10,17 @@ use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::middleware::{map_request_with_state, map_response};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use lobby::{MAX_MESSAGE, Stats, coturn_credentials, encode, valid_mailbox};
+use lobby::{MAX_MESSAGE, Stats, TURNS_PER_ROOM, coturn_credentials, encode, valid_mailbox};
 use tokio::sync::mpsc::{Sender, channel};
 use tokio::time::timeout;
 use tower_http::services::{ServeDir, ServeFile};
 use uploadnt_core::Lobby;
 
-type Room = Vec<(u64, Sender<Vec<u8>>)>;
+#[derive(Default)]
+struct Room {
+    peers: Vec<(u64, Sender<Vec<u8>>)>,
+    turns: u32,
+}
 
 #[derive(Default)]
 struct Lobbies {
@@ -31,6 +35,10 @@ const PING: Duration = Duration::from_secs(20);
 const DEAD: Duration = Duration::from_secs(60);
 // signalling needs a handful of messages, a backlog this long means the peer stopped reading
 const QUEUE: usize = 64;
+const MAX_ROOMS: usize = 10_000;
+// a handshake takes a few dozen messages, so a socket sending this many in a window is flooding
+const MESSAGES_PER_WINDOW: u32 = 500;
+const WINDOW: Duration = Duration::from_secs(10);
 
 #[tokio::main]
 pub async fn main() {
@@ -75,7 +83,7 @@ fn today() -> u64 {
 }
 
 fn paired(app: &App, mailbox: &str) -> bool {
-    app.rooms.lock().unwrap().get(mailbox).is_some_and(|room| room.len() == 2)
+    app.rooms.lock().unwrap().get(mailbox).is_some_and(|room| room.peers.len() == 2)
 }
 
 async fn turn(Path(mailbox): Path<String>, State(app): State<App>) -> Response {
@@ -86,8 +94,15 @@ async fn turn(Path(mailbox): Path<String>, State(app): State<App>) -> Response {
     let (Ok(urls), Some(secret)) = (std::env::var("TURN_URLS"), secret) else {
         return (StatusCode::NOT_FOUND, "no plan b here").into_response();
     };
-    if !paired(&app, &mailbox) {
-        return (StatusCode::FORBIDDEN, "nobody to relay for").into_response();
+    {
+        let mut rooms = app.rooms.lock().unwrap();
+        let Some(room) = rooms.get_mut(&mailbox).filter(|room| room.peers.len() == 2) else {
+            return (StatusCode::FORBIDDEN, "nobody to relay for").into_response();
+        };
+        room.turns += 1;
+        if room.turns > TURNS_PER_ROOM {
+            return (StatusCode::TOO_MANY_REQUESTS, "enough relay logins for this transfer").into_response();
+        }
     }
     let body = coturn_credentials(&urls, &secret, now().as_secs(), &mailbox);
     ([(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-store")], body).into_response()
@@ -118,11 +133,14 @@ async fn run(mut socket: WebSocket, mailbox: String, app: App) {
     let (tx, mut rx) = channel(QUEUE);
     let joined = {
         let mut rooms = app.rooms.lock().unwrap();
+        if rooms.len() >= MAX_ROOMS && !rooms.contains_key(&mailbox) {
+            return;
+        }
         let room = rooms.entry(mailbox.clone()).or_default();
-        if room.len() < 2 {
-            room.push((id, tx));
-            if room.len() == 2 {
-                room.iter().for_each(|(_, peer)| _ = peer.try_send(encode(&Lobby::Peer(true))));
+        if room.peers.len() < 2 {
+            room.peers.push((id, tx));
+            if room.peers.len() == 2 {
+                room.peers.iter().for_each(|(_, peer)| _ = peer.try_send(encode(&Lobby::Peer(true))));
             }
             true
         } else {
@@ -137,15 +155,23 @@ async fn run(mut socket: WebSocket, mailbox: String, app: App) {
     let mut ping = tokio::time::interval(PING);
     let mut seen = Instant::now();
     let mut reported = false;
+    let (mut window, mut messages) = (Instant::now(), 0);
     loop {
         let out = tokio::select! {
             msg = socket.recv() => {
                 seen = Instant::now();
+                if window.elapsed() > WINDOW {
+                    (window, messages) = (seen, 0);
+                }
+                messages += 1;
+                if messages > MESSAGES_PER_WINDOW {
+                    break;
+                }
                 match msg {
                     Some(Ok(Message::Binary(bytes))) => {
                         let relay = encode(&Lobby::Relay(bytes.to_vec()));
                         let rooms = app.rooms.lock().unwrap();
-                        rooms[&mailbox].iter().filter(|(peer, _)| *peer != id).for_each(|(_, peer)| _ = peer.try_send(relay.clone()));
+                        rooms[&mailbox].peers.iter().filter(|(peer, _)| *peer != id).for_each(|(_, peer)| _ = peer.try_send(relay.clone()));
                     }
                     Some(Ok(Message::Text(path))) if !reported && paired(&app, &mailbox) => {
                         reported = true;
@@ -171,9 +197,9 @@ async fn run(mut socket: WebSocket, mailbox: String, app: App) {
 
     let mut rooms = app.rooms.lock().unwrap();
     let room = rooms.get_mut(&mailbox).unwrap();
-    room.retain(|(peer, _)| *peer != id);
-    room.iter().for_each(|(_, peer)| _ = peer.try_send(encode(&Lobby::Peer(false))));
-    if room.is_empty() {
+    room.peers.retain(|(peer, _)| *peer != id);
+    room.peers.iter().for_each(|(_, peer)| _ = peer.try_send(encode(&Lobby::Peer(false))));
+    if room.peers.is_empty() {
         rooms.remove(&mailbox);
     }
 }
