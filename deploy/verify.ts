@@ -3,7 +3,8 @@ import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const [site = "https://uploadnt.com", repo = "Z1xus/uploadnt"] = process.argv.slice(2);
+const [site = "https://uploadnt.com", repo = "Z1xus/uploadnt"] =
+  process.argv.slice(2);
 const sha = (data: ArrayBuffer | string) =>
   createHash("sha256")
     .update(typeof data === "string" ? data : new Uint8Array(data))
@@ -17,15 +18,19 @@ const listed = await (
   await fetch(new URL("/.well-known/bundle.txt", site))
 ).text();
 
+// pages are checked at the address people open, /get rather than /get.html
+const route = (file: string) =>
+  "/" + file.replace(/(^|\/)index\.html$/, "$1").replace(/\.html$/, "");
+const unprotected: string[] = [];
 const lines = await Promise.all(
   listed
     .trim()
     .split("\n")
     .map(async (line) => {
       const file = line.slice(66);
-      const res = await fetch(
-        new URL("/" + file.replace(/(^|\/)index\.html$/, "$1"), site),
-      );
+      const res = await fetch(new URL(route(file), site));
+      if (file.endsWith(".html") && !res.headers.get("content-security-policy"))
+        unprotected.push(route(file));
       return `${sha(await res.arrayBuffer())}  ${file}\n`;
     }),
 );
@@ -34,6 +39,7 @@ const bundle = sha(served);
 
 const problems = [
   served !== listed && "served files differ from the listed bundle",
+  unprotected.length > 0 && `no csp on ${unprotected.join(", ")}`,
   bundle !== claimed.bundle && "bundle hash differs from provenance.json",
   root.headers.get("x-uploadnt-bundle") !== bundle &&
     "bundle header differs from served files",
