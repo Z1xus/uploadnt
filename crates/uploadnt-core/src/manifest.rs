@@ -5,6 +5,9 @@ pub const CHUNK: u32 = 1 << 20;
 pub const PIECE: u32 = 63 << 10;
 pub const MAX_NAME: usize = 1024;
 pub const MAX_MIME: usize = 255;
+pub const MAX_FILES: usize = 100_000;
+// 1 TiB, so chunk numbers fit a u32 and the hash list stays near 32 MiB
+pub const MAX_CHUNKS: u32 = 1 << 20;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileEntry {
@@ -14,6 +17,10 @@ pub struct FileEntry {
 }
 
 impl FileEntry {
+    pub fn is_valid(&self) -> bool {
+        self.name.len() <= MAX_NAME && self.mime.len() <= MAX_MIME && self.size <= MAX_CHUNKS as u64 * CHUNK as u64
+    }
+
     pub fn chunks(&self) -> u32 {
         self.size.div_ceil(CHUNK as u64) as u32
     }
@@ -39,26 +46,50 @@ impl Manifest {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.files.iter().all(|f| f.name.len() <= MAX_NAME && f.mime.len() <= MAX_MIME)
-            && self.files.iter().map(FileEntry::chunks).sum::<u32>() == self.chunks()
+        self.files.len() <= MAX_FILES
+            && self.hashes.len() <= MAX_CHUNKS as usize
+            && self.files.iter().all(FileEntry::is_valid)
+            && self.files.iter().map(|f| f.chunks() as u64).sum::<u64>() == self.hashes.len() as u64
     }
 
     pub fn locate(&self, chunk: u32) -> Option<(u32, u64, u32)> {
-        let mut first = 0;
-        for (file, entry) in self.files.iter().enumerate() {
-            let n = entry.chunks();
-            if chunk < first + n {
-                let offset = (chunk - first) as u64 * CHUNK as u64;
-                let len = (entry.size - offset).min(CHUNK as u64) as u32;
-                return Some((file as u32, offset, len));
-            }
-            first += n;
-        }
-        None
+        Layout::new(self).locate(self, chunk)
     }
 
     pub fn chunk_len(&self, chunk: u32) -> u32 {
         self.locate(chunk).map_or(0, |(_, _, len)| len)
+    }
+}
+
+// first chunk of every file, so a chunk is found by binary search instead of a walk
+pub struct Layout {
+    starts: Vec<u32>,
+    total: u32,
+}
+
+impl Layout {
+    pub fn new(manifest: &Manifest) -> Self {
+        let mut total = 0;
+        let starts = manifest
+            .files
+            .iter()
+            .map(|f| {
+                let start = total;
+                total += f.chunks();
+                start
+            })
+            .collect();
+        Self { starts, total }
+    }
+
+    pub fn locate(&self, manifest: &Manifest, chunk: u32) -> Option<(u32, u64, u32)> {
+        if chunk >= self.total {
+            return None;
+        }
+        let file = self.starts.partition_point(|&first| first <= chunk) - 1;
+        let offset = (chunk - self.starts[file]) as u64 * CHUNK as u64;
+        let len = (manifest.files[file].size - offset).min(CHUNK as u64) as u32;
+        Some((file as u32, offset, len))
     }
 }
 

@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use crate::manifest::{Layout, MAX_CHUNKS, MAX_FILES};
 use crate::{Bitmap, Channel, Error, FileEntry, Frame, Manifest, PIECE, VERSION, hash_chunk};
 
 const MIN_WINDOW: usize = 4;
@@ -41,8 +42,7 @@ impl Link {
         postcard::from_bytes(&self.channel.open(msg)?).map_err(|_| Error::Decode)
     }
 
-    fn progress(&mut self, manifest: &Manifest, have: &Bitmap) {
-        let bytes = (0..have.len()).filter(|&i| have.get(i)).map(|i| manifest.chunk_len(i) as u64).sum();
+    fn progress(&mut self, bytes: u64, manifest: &Manifest) {
         self.events.push_back(Event::Progress { bytes, total: manifest.size() });
     }
 }
@@ -54,9 +54,18 @@ fn check_version(version: u16) -> Result<(), Error> {
 pub struct Sender {
     link: Link,
     manifest: Manifest,
+    layout: Layout,
     root: [u8; 32],
     acked: Bitmap,
+    acked_bytes: u64,
     reading: HashSet<u32>,
+}
+
+fn bytes_in(manifest: &Manifest, layout: &Layout, have: &Bitmap) -> u64 {
+    (0..have.len())
+        .filter(|&i| have.get(i))
+        .map(|i| layout.locate(manifest, i).map_or(0, |(_, _, len)| len as u64))
+        .sum()
 }
 
 impl Sender {
@@ -69,7 +78,15 @@ impl Sender {
         for (i, hashes) in manifest.hashes.chunks(HASHES_PER_FRAME).enumerate() {
             link.send(&Frame::Hashes { start: (i * HASHES_PER_FRAME) as u32, hashes: hashes.to_vec() });
         }
-        Self { link, root: manifest.root(), acked: Bitmap::new(manifest.chunks()), manifest, reading: HashSet::new() }
+        Self {
+            link,
+            root: manifest.root(),
+            layout: Layout::new(&manifest),
+            acked: Bitmap::new(manifest.chunks()),
+            acked_bytes: 0,
+            manifest,
+            reading: HashSet::new(),
+        }
     }
 
     pub fn handle(&mut self, msg: &[u8]) -> Result<(), Error> {
@@ -77,11 +94,12 @@ impl Sender {
             Frame::Hello { version } => check_version(version)?,
             Frame::Have(bits) => {
                 self.acked = Bitmap::from_bytes(&bits, self.manifest.chunks());
-                self.link.progress(&self.manifest, &self.acked);
+                self.acked_bytes = bytes_in(&self.manifest, &self.layout, &self.acked);
+                self.link.progress(self.acked_bytes, &self.manifest);
             }
             Frame::Want(chunks) => {
                 for chunk in chunks {
-                    let Some((file, offset, len)) = self.manifest.locate(chunk) else {
+                    let Some((file, offset, len)) = self.layout.locate(&self.manifest, chunk) else {
                         return Err(Error::Protocol);
                     };
                     if self.reading.insert(chunk) {
@@ -90,8 +108,13 @@ impl Sender {
                 }
             }
             Frame::Ack(chunk) => {
-                self.acked.set(chunk);
-                self.link.progress(&self.manifest, &self.acked);
+                if !self.acked.get(chunk)
+                    && let Some((_, _, len)) = self.layout.locate(&self.manifest, chunk)
+                {
+                    self.acked.set(chunk);
+                    self.acked_bytes += len as u64;
+                }
+                self.link.progress(self.acked_bytes, &self.manifest);
             }
             Frame::Done(root) if root == self.root => self.link.events.push_back(Event::Done),
             Frame::Bye(reason) => self.link.events.push_back(Event::Closed { reason }),
@@ -164,7 +187,10 @@ pub struct Receiver {
     files: Parts<FileEntry>,
     hashes: Parts<[u8; 32]>,
     manifest: Option<Manifest>,
+    layout: Layout,
     have: Bitmap,
+    have_bytes: u64,
+    next_missing: u32,
     inflight: HashMap<u32, Partial>,
     writing: HashSet<u32>,
     window: usize,
@@ -182,7 +208,10 @@ impl Receiver {
             files: Parts(Vec::new()),
             hashes: Parts(Vec::new()),
             manifest: None,
+            layout: Layout::new(&Manifest { files: Vec::new(), hashes: Vec::new() }),
             have: Bitmap::new(0),
+            have_bytes: 0,
+            next_missing: 0,
             inflight: HashMap::new(),
             writing: HashSet::new(),
             window: MIN_WINDOW,
@@ -205,13 +234,20 @@ impl Receiver {
         match self.link.open(msg)? {
             Frame::Hello { version } => check_version(version)?,
             Frame::Files { count, start, files } if self.manifest.is_none() => {
-                if *self.file_count.get_or_insert(count) != count {
+                if *self.file_count.get_or_insert(count) != count
+                    || count as usize > MAX_FILES
+                    || self.files.len() + files.len() > count as usize
+                    || !files.iter().all(FileEntry::is_valid)
+                {
                     return Err(Error::Protocol);
                 }
                 self.files.add(start, files);
                 self.assemble()?;
             }
             Frame::Hashes { start, hashes } if self.manifest.is_none() => {
+                if self.hashes.len() + hashes.len() > MAX_CHUNKS as usize {
+                    return Err(Error::Protocol);
+                }
                 self.hashes.add(start, hashes);
                 self.assemble()?;
             }
@@ -227,9 +263,10 @@ impl Receiver {
         if let Some(bits) = have {
             self.have = Bitmap::from_bytes(bits, manifest.chunks());
         }
+        self.have_bytes = bytes_in(manifest, &self.layout, &self.have);
         self.accepted = true;
         self.link.send(&Frame::Have(self.have.bytes().to_vec()));
-        self.link.progress(manifest, &self.have);
+        self.link.progress(self.have_bytes, manifest);
         self.fill(now);
     }
 
@@ -237,10 +274,13 @@ impl Receiver {
         if !self.writing.remove(&chunk) {
             return;
         }
-        self.have.set(chunk);
-        self.link.send(&Frame::Ack(chunk));
         let manifest = self.manifest.as_ref().unwrap();
-        self.link.progress(manifest, &self.have);
+        if !self.have.get(chunk) {
+            self.have.set(chunk);
+            self.have_bytes += self.layout.locate(manifest, chunk).map_or(0, |(_, _, len)| len as u64);
+        }
+        self.link.send(&Frame::Ack(chunk));
+        self.link.progress(self.have_bytes, manifest);
         if self.writing.is_empty() {
             self.window = (self.window + 1).min(self.max_window);
         }
@@ -286,7 +326,11 @@ impl Receiver {
         if self.files.len() < count as usize {
             return Ok(());
         }
-        let total = self.files.items().map(FileEntry::chunks).sum::<u32>() as usize;
+        let total = self.files.items().map(|f| f.chunks() as u64).sum::<u64>();
+        if total > MAX_CHUNKS as u64 {
+            return Err(Error::Protocol);
+        }
+        let total = total as usize;
         if self.hashes.len() > total {
             return Err(Error::Protocol);
         }
@@ -298,6 +342,7 @@ impl Receiver {
             return Err(Error::Protocol);
         }
         self.have = Bitmap::new(manifest.chunks());
+        self.layout = Layout::new(&manifest);
         self.link.events.push_back(Event::Manifest { manifest: manifest.clone() });
         self.manifest = Some(manifest);
         Ok(())
@@ -318,7 +363,7 @@ impl Receiver {
         let partial = self.inflight.remove(&chunk).unwrap();
         let manifest = self.manifest.as_ref().unwrap();
         if hash_chunk(&partial.data) == manifest.hashes[chunk as usize] {
-            let (file, offset, _) = manifest.locate(chunk).unwrap();
+            let (file, offset, _) = self.layout.locate(manifest, chunk).unwrap();
             self.writing.insert(chunk);
             self.link.events.push_back(Event::Write { chunk, file, offset, data: partial.data });
         } else {
@@ -337,11 +382,12 @@ impl Receiver {
             self.link.events.push_back(Event::Done);
             return;
         }
+        while self.have.get(self.next_missing) {
+            self.next_missing += 1;
+        }
         let busy = self.inflight.len() + self.writing.len();
-        let want: Vec<u32> = self
-            .have
-            .missing()
-            .filter(|c| !self.inflight.contains_key(c) && !self.writing.contains(c))
+        let want: Vec<u32> = (self.next_missing..self.have.len())
+            .filter(|c| !self.have.get(*c) && !self.inflight.contains_key(c) && !self.writing.contains(c))
             .take(self.window.saturating_sub(busy))
             .collect();
         if want.is_empty() {
@@ -351,7 +397,7 @@ impl Receiver {
             self.last_piece = now;
         }
         for &chunk in &want {
-            let len = manifest.chunk_len(chunk);
+            let len = self.layout.locate(manifest, chunk).map_or(0, |(_, _, len)| len);
             let partial = Partial { data: vec![0; len as usize], pieces: Bitmap::new(len.div_ceil(PIECE)) };
             self.inflight.insert(chunk, partial);
         }

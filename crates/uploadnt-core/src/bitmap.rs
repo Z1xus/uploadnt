@@ -2,11 +2,12 @@
 pub struct Bitmap {
     bits: Vec<u8>,
     len: u32,
+    ones: u32,
 }
 
 impl Bitmap {
     pub fn new(len: u32) -> Self {
-        Self { bits: vec![0; len.div_ceil(8) as usize], len }
+        Self { bits: vec![0; len.div_ceil(8) as usize], len, ones: 0 }
     }
 
     pub fn from_bytes(bytes: &[u8], len: u32) -> Self {
@@ -18,6 +19,7 @@ impl Bitmap {
         {
             *last &= (1u8 << (len % 8)) - 1;
         }
+        map.ones = map.bits.iter().map(|b| b.count_ones()).sum();
         map
     }
 
@@ -38,13 +40,14 @@ impl Bitmap {
     }
 
     pub fn set(&mut self, i: u32) {
-        if i < self.len {
+        if i < self.len && !self.get(i) {
             self.bits[(i / 8) as usize] |= 1 << (i % 8);
+            self.ones += 1;
         }
     }
 
     pub fn count(&self) -> u32 {
-        self.bits.iter().map(|b| b.count_ones()).sum()
+        self.ones
     }
 
     pub fn is_full(&self) -> bool {
