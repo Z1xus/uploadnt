@@ -25,7 +25,12 @@ const importmap = `<script type="importmap">${JSON.stringify({ integrity })}</sc
 
 const inline = new Set<string>();
 for (const f of html) {
-  const page = readFileSync(f, "utf8").replace("<head>", `<head>${importmap}`);
+  const page = readFileSync(f, "utf8")
+    .replace("<head>", `<head>${importmap}`)
+    .replace(
+      /<link href="\.(\/_app\/[^"]+\.js)" rel="modulepreload">/g,
+      (tag, path) => tag.replace(">", ` integrity="${integrity[path]}">`),
+    );
   for (const [, body] of page.matchAll(
     /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g,
   )) {
