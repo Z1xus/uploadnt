@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Path } from '../peer';
-	import { size } from '../rate';
+	import { mbit, size } from '../rate';
 	import Percent from './Percent.svelte';
 
 	let {
@@ -16,7 +16,9 @@
 <Percent {value} />
 <p class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-xl">
 	{#if label}<span>{@render label()}</span>{/if}
-	<span class="min-w-[7ch] tabular-nums">{rate ? `${size(rate)}/s` : ''}</span>
+	<span class="min-w-[17ch] tabular-nums"
+		>{rate ? `${size(rate)}/s` : ''}<span class="text-muted">{rate ? ` (${mbit(rate)})` : ''}</span></span
+	>
 	{#if path === 'direct'}
 		<span>direct</span>
 	{:else if path === 'relayed'}

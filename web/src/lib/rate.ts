@@ -21,3 +21,8 @@ export function size(bytes: number) {
 	}
 	return `${bytes.toFixed(i && bytes < 10 ? 1 : 0)} ${units[i]}`;
 }
+
+export function mbit(bytesPerSecond: number) {
+	const bits = (bytesPerSecond * 8) / 1e6;
+	return `${bits.toFixed(bits < 10 ? 1 : 0)} mbit/s`;
+}
