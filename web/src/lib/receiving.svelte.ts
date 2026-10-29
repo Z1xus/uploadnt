@@ -153,6 +153,8 @@ export class Receiving {
 	}
 
 	private connect() {
+		this.rate = 0;
+		this.meter = new Rate();
 		this.met = true;
 		this.alone = false;
 		clearTimeout(this.alone_timer);
@@ -190,8 +192,9 @@ export class Receiving {
 			}
 		};
 		peer.onclose = () => {
-			if (this.attempt === attempt && this.phase !== 'done' && this.phase !== 'failed')
-				this.lobby!.reconnect();
+			if (this.attempt !== attempt) return;
+			this.rate = 0;
+			if (this.phase !== 'done' && this.phase !== 'failed') this.lobby!.reconnect();
 		};
 		peer.start();
 	}

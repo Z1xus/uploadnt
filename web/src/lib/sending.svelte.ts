@@ -168,6 +168,8 @@ export class Sending {
 	}
 
 	private connect() {
+		this.rate = 0;
+		this.meter = new Rate();
 		const old = this.attempt;
 		this.attempt = undefined;
 		old?.close();
@@ -177,6 +179,9 @@ export class Sending {
 		this.spare = this.prewarm();
 		const attempt = new Attempt(this.secret, true, this.lobby!, peer);
 		this.attempt = attempt;
+		peer.onclose = () => {
+			if (this.attempt === attempt) this.rate = 0;
+		};
 		peer.onopen = async () => {
 			try {
 				const builder = await this.manifest;

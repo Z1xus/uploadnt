@@ -3,6 +3,7 @@ export class Rate {
 
 	push(bytes: number) {
 		const now = performance.now();
+		if (bytes < (this.samples.at(-1)?.[1] ?? 0)) this.samples = [];
 		this.samples.push([now, bytes]);
 		while (this.samples.length > 2 && now - this.samples[0][0] > 3000) this.samples.shift();
 		const [t0, b0] = this.samples[0];
