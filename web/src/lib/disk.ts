@@ -131,6 +131,7 @@ class Staged implements Sink {
 				a.href = URL.createObjectURL(file);
 				a.download = name;
 				a.click();
+				setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
 			}
 		}
 		if (this.target) await root.removeEntry(this.root, { recursive: true });

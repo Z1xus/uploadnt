@@ -32,6 +32,7 @@ export class Receiving {
 	private attempt?: Attempt;
 	private session?: ReceiverSession;
 	private sink?: Sink;
+	private root?: string;
 	private chunks = 0;
 	private met = false;
 	private relay = false;
@@ -65,6 +66,7 @@ export class Receiving {
 		this.taking = true;
 		try {
 			this.sink = await openSink(root, this.files, this.size);
+			this.root = root;
 		} catch (e) {
 			if ((e as Error).name !== 'AbortError') this.fail(e);
 			return;
@@ -131,7 +133,6 @@ export class Receiving {
 			switch (e.type) {
 				case 'peer':
 					if (!e.present) break;
-					if (this.phase === 'done') this.reset();
 					this.connect();
 					break;
 				case 'pake':
@@ -204,15 +205,21 @@ export class Receiving {
 		for (let batch = session.events(); batch.length; batch = session.events())
 			for (const e of batch) {
 				switch (e.type) {
-					case 'manifest':
-						this.files = e.files;
-						this.size = e.size;
-						this.chunks = e.chunks;
-						if (this.committed) session.accept(this.committed, performance.now());
-						else if (this.finishing) break;
-						else if (this.sink) this.accept();
-						else this.phase = 'offered';
+					case 'manifest': {
+						// anything but the files already agreed to needs a fresh "take it"
+						const same = this.root !== undefined && session.root() === this.root;
+						if (same && this.committed) session.accept(this.committed, performance.now());
+						else if (same && this.finishing) break;
+						else if (same && this.sink) this.accept();
+						else {
+							this.reset();
+							this.files = e.files;
+							this.size = e.size;
+							this.chunks = e.chunks;
+							this.phase = 'offered';
+						}
 						break;
+					}
 					case 'write':
 						this.sink!.write(e.file, e.offset, e.chunk, e.data).then(
 							() => {
@@ -257,12 +264,11 @@ export class Receiving {
 		this.phase = 'done';
 		this.again = !!this.sink?.again;
 		document.title = "uploadn't";
-		const attempt = this.attempt;
-		// closing the connection throws away whatever is still queued, so we wait a second and pray
-		setTimeout(() => attempt?.close(), 1000);
 	}
 
 	private reset() {
+		if (this.phase !== 'done') this.sink?.abort();
+		this.root = undefined;
 		this.files = [];
 		this.size = this.bytes = this.rate = this.chunks = 0;
 		this.where = '';

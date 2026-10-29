@@ -1,6 +1,7 @@
 // each connection has its own congestion window, so loss on long links costs 1/8 as much
 const CONNECTIONS = 8;
 const CHANNELS = 4;
+const MAX_PENDING = 64;
 const HIGH = 4 << 20;
 const LOW = 1 << 20;
 
@@ -93,8 +94,10 @@ export class Peer {
 		this.ice = (this.turn && (await relayServers(this.turn))) || STUN;
 		if (this.dead || !this.offerer) return;
 		for (let i = 0; i < CONNECTIONS; i++) {
+			if (this.dead) return;
 			const pc = this.connection(i);
 			await pc.setLocalDescription();
+			if (this.dead) return;
 			this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
 		}
 	}
@@ -115,8 +118,7 @@ export class Peer {
 			ch.bufferedAmountLowThreshold = LOW;
 			ch.onopen = () => {
 				this.opened[i] = (this.opened[i] ?? 0) + 1;
-				const all = this.opened.reduce((a, b) => a + b, 0) === CONNECTIONS * CHANNELS;
-				if (this.offerer ? all : i === 0 && this.opened[0] === CHANNELS) this.onopen();
+				if (this.opened.reduce((a, b) => a + b, 0) === CONNECTIONS * CHANNELS) this.onopen();
 			};
 			ch.onclose = () => this.close();
 			ch.onmessage = (e) => {
@@ -137,9 +139,11 @@ export class Peer {
 		if (!this.pcs.length || !ice || this.dead) return false;
 		this.ice = ice;
 		for (const [i, pc] of this.pcs.entries()) {
+			if (this.dead) return false;
 			pc.setConfiguration({ iceServers: ice });
 			pc.restartIce();
 			await pc.setLocalDescription();
+			if (this.dead) return false;
 			this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
 		}
 		return true;
@@ -147,8 +151,8 @@ export class Peer {
 
 	async signal(msg: Exclude<Signal, { relay: boolean }>) {
 		await this.start();
-		if (this.dead) return;
 		const i = msg.pc ?? 0;
+		if (this.dead || !Number.isInteger(i) || i < 0 || i >= CONNECTIONS) return;
 		const pc = this.offerer ? this.pcs[i] : this.connection(i);
 		if (!pc) return;
 		if ('sdp' in msg) {
@@ -156,12 +160,13 @@ export class Peer {
 			for (const c of this.pending.get(i)?.splice(0) ?? []) await pc.addIceCandidate(c).catch(() => {});
 			if (msg.sdp.type === 'offer') {
 				await pc.setLocalDescription();
-				this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
+				if (!this.dead) this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
 			}
 		} else if (pc.remoteDescription) {
 			await pc.addIceCandidate(msg.candidate).catch(() => {});
 		} else {
-			this.pending.set(i, [...(this.pending.get(i) ?? []), msg.candidate]);
+			const pending = this.pending.get(i) ?? [];
+			if (pending.length < MAX_PENDING) this.pending.set(i, [...pending, msg.candidate]);
 		}
 	}
 
