@@ -57,7 +57,7 @@ impl Keys {
             Role::Sender => (s2r, r2s),
             Role::Receiver => (r2s, s2r),
         };
-        Channel { seal: self.cipher(seal), open: self.cipher(open), counter: 0 }
+        Channel { seal: self.cipher(seal), open: self.cipher(open), counter: 0, last: None }
     }
 
     fn cipher(&self, label: &[u8]) -> ChaCha20Poly1305 {
@@ -72,6 +72,7 @@ pub struct Channel {
     seal: ChaCha20Poly1305,
     open: ChaCha20Poly1305,
     counter: u64,
+    last: Option<u64>,
 }
 
 impl Channel {
@@ -85,6 +86,17 @@ impl Channel {
     pub fn open(&self, msg: &[u8]) -> Result<Vec<u8>, Error> {
         let (counter, sealed) = msg.split_at_checked(8).ok_or(Error::Decrypt)?;
         self.open.decrypt(&nonce(counter), sealed).map_err(|_| Error::Decrypt)
+    }
+
+    // signalling arrives in order over the lobby socket, so a counter that does not grow is a replay
+    pub fn open_next(&mut self, msg: &[u8]) -> Result<Vec<u8>, Error> {
+        let counter = u64::from_le_bytes(msg.get(..8).ok_or(Error::Decrypt)?.try_into().unwrap());
+        if self.last.is_some_and(|last| counter <= last) {
+            return Err(Error::Decrypt);
+        }
+        let plain = self.open(msg)?;
+        self.last = Some(counter);
+        Ok(plain)
     }
 }
 

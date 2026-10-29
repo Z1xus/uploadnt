@@ -201,8 +201,8 @@ impl Keys {
         postcard::to_allocvec(&Signal::Sealed(self.signal.seal(text.as_bytes()))).unwrap()
     }
 
-    pub fn open(&self, data: &[u8]) -> Result<String, Error> {
-        String::from_utf8(self.signal.open(data)?).map_err(|_| Error::Decode)
+    pub fn open(&mut self, data: &[u8]) -> Result<String, Error> {
+        String::from_utf8(self.signal.open_next(data)?).map_err(|_| Error::Decode)
     }
 
     pub fn sender(&self, builder: &ManifestBuilder) -> Result<SenderSession, Error> {
