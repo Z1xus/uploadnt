@@ -7,9 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  attestations: write
-  packages: write
 
 jobs:
   ci:
@@ -32,23 +29,45 @@ jobs:
       - run: bun run check
         working-directory: web
       - if: github.event_name == 'push'
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: site
+          path: web/build
+          include-hidden-files: true
+
+  publish:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: site
+          path: web/build
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: web/build/.well-known/bundle.txt
-      - if: github.event_name == 'push'
-        id: image
+      - id: image
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build -f deploy/selfhost/Dockerfile -t "$image:latest" -t "$image:$GITHUB_SHA" .
-          docker push -q "$image:latest"
           docker push -q "$image:$GITHUB_SHA"
+          docker push -q "$image:latest"
           echo "name=$image" >> "$GITHUB_OUTPUT"
-          echo "digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$image:latest" | cut -d@ -f2)" >> "$GITHUB_OUTPUT"
-      - if: github.event_name == 'push'
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+          echo "digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$image:$GITHUB_SHA" | cut -d@ -f2)" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.image.outputs.digest }}
