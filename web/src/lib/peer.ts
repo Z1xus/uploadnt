@@ -1,3 +1,5 @@
+// each connection has its own congestion window, so loss on long links costs 1/8 as much
+const CONNECTIONS = 8;
 const CHANNELS = 4;
 const HIGH = 4 << 20;
 const LOW = 1 << 20;
@@ -5,7 +7,9 @@ const LOW = 1 << 20;
 export type Path = 'direct' | 'relayed' | 'tcp' | 'blocked';
 
 export type Signal =
-	{ sdp: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { relay: boolean };
+	| { sdp: RTCSessionDescriptionInit; pc?: number }
+	| { candidate: RTCIceCandidateInit; pc?: number }
+	| { relay: boolean };
 
 export type Candidate = { type: string; protocol: string; family: string };
 
@@ -44,10 +48,11 @@ export class Peer {
 	onopen = () => {};
 	onclose = () => {};
 
-	private pc?: RTCPeerConnection;
+	private pcs: RTCPeerConnection[] = [];
 	private channels: RTCDataChannel[] = [];
-	private pending: RTCIceCandidateInit[] = [];
-	private open = 0;
+	private pending = new Map<number, RTCIceCandidateInit[]>();
+	private ice: RTCIceServer[] = STUN;
+	private opened: number[] = [];
 	private waiters: (() => void)[] = [];
 	private signals: Signal[] = [];
 	private sink?: (signal: Signal) => void;
@@ -80,20 +85,39 @@ export class Peer {
 		return (this.started ??= this.init());
 	}
 
+	private get pc() {
+		return this.pcs[0] as RTCPeerConnection | undefined;
+	}
+
 	private async init() {
-		const ice = (this.turn && (await relayServers(this.turn))) || STUN;
-		if (this.dead) return;
-		const pc = new RTCPeerConnection({ iceServers: ice });
-		this.pc = pc;
-		pc.onicecandidate = (e) => e.candidate && this.emit({ candidate: e.candidate.toJSON() });
+		this.ice = (this.turn && (await relayServers(this.turn))) || STUN;
+		if (this.dead || !this.offerer) return;
+		for (let i = 0; i < CONNECTIONS; i++) {
+			const pc = this.connection(i);
+			await pc.setLocalDescription();
+			this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
+		}
+	}
+
+	// the offerer decides how many connections there are, the answerer opens each one when its offer arrives
+	private connection(i: number) {
+		if (this.pcs[i]) return this.pcs[i];
+		const pc = new RTCPeerConnection({ iceServers: this.ice });
+		this.pcs[i] = pc;
+		pc.onicecandidate = (e) => e.candidate && this.emit({ candidate: e.candidate.toJSON(), pc: i });
 		pc.onconnectionstatechange = () => {
 			if (pc.connectionState === 'failed' || pc.connectionState === 'closed') this.close();
 		};
 		for (let id = 0; id < CHANNELS; id++) {
+			const control = i === 0 && id === 0;
 			const ch = pc.createDataChannel(`nope${id}`, { negotiated: true, id });
 			ch.binaryType = 'arraybuffer';
 			ch.bufferedAmountLowThreshold = LOW;
-			ch.onopen = () => ++this.open === CHANNELS && this.onopen();
+			ch.onopen = () => {
+				this.opened[i] = (this.opened[i] ?? 0) + 1;
+				const all = this.opened.reduce((a, b) => a + b, 0) === CONNECTIONS * CHANNELS;
+				if (this.offerer ? all : i === 0 && this.opened[0] === CHANNELS) this.onopen();
+			};
 			ch.onclose = () => this.close();
 			ch.onmessage = (e) => {
 				const msg = new Uint8Array(e.data);
@@ -101,41 +125,43 @@ export class Peer {
 				else this.inbox.push(msg);
 			};
 			ch.onbufferedamountlow = () => this.wake();
-			this.channels.push(ch);
+			if (control) this.channels.unshift(ch);
+			else this.channels.push(ch);
 		}
-		if (this.offerer) {
-			await pc.setLocalDescription();
-			this.emit({ sdp: pc.localDescription!.toJSON() });
-		}
+		return pc;
 	}
 
 	async relay(turn: string) {
 		await this.start();
 		const ice = await relayServers(turn);
-		const pc = this.pc;
-		if (!pc || !ice || this.dead) return false;
-		pc.setConfiguration({ iceServers: ice });
-		pc.restartIce();
-		await pc.setLocalDescription();
-		this.emit({ sdp: pc.localDescription!.toJSON() });
+		if (!this.pcs.length || !ice || this.dead) return false;
+		this.ice = ice;
+		for (const [i, pc] of this.pcs.entries()) {
+			pc.setConfiguration({ iceServers: ice });
+			pc.restartIce();
+			await pc.setLocalDescription();
+			this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
+		}
 		return true;
 	}
 
 	async signal(msg: Exclude<Signal, { relay: boolean }>) {
 		await this.start();
-		const pc = this.pc;
-		if (!pc || this.dead) return;
+		if (this.dead) return;
+		const i = msg.pc ?? 0;
+		const pc = this.offerer ? this.pcs[i] : this.connection(i);
+		if (!pc) return;
 		if ('sdp' in msg) {
 			await pc.setRemoteDescription(msg.sdp);
-			for (const c of this.pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+			for (const c of this.pending.get(i)?.splice(0) ?? []) await pc.addIceCandidate(c).catch(() => {});
 			if (msg.sdp.type === 'offer') {
 				await pc.setLocalDescription();
-				this.emit({ sdp: pc.localDescription!.toJSON() });
+				this.emit({ sdp: pc.localDescription!.toJSON(), pc: i });
 			}
 		} else if (pc.remoteDescription) {
 			await pc.addIceCandidate(msg.candidate).catch(() => {});
 		} else {
-			this.pending.push(msg.candidate);
+			this.pending.set(i, [...(this.pending.get(i) ?? []), msg.candidate]);
 		}
 	}
 
@@ -197,7 +223,7 @@ export class Peer {
 		if (this.dead) return;
 		this.dead = true;
 		this.wake();
-		this.pc?.close();
+		this.pcs.forEach((pc) => pc.close());
 		this.onclose();
 	}
 }
